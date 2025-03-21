@@ -1,0 +1,8 @@
+/target
+.env
+.env.*
+/db/*.db
+/db/*.db-wal
+/db/*.db-wal-shm
+/ui/node_modules
+/ui/package-lock.json

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {# enable swapping for specific error status codes #}
+        <meta name=""
+              content='{ "responseHandling": [ {"code":"409", "swap": true}, {"code":"422", "swap": true} ] }' />
+        <title>
+            {% block title %}{{ title }} - shipwright{% endblock %}
+        </title>
+        {% block head %}{% endblock %}
+        <script src="/static/js/htmx.min.js"></script>
+        <script src="/static/js/alpine.min.js" defer></script>
+        <link rel="stylesheet" href="/static/css/output.css" />
+    </head>
+    <body hx-swap="outerHTML">
+        <nav>
+            <a href="/">Home</a>
+            <a href="/todos">Todos</a>
+            <a href="/auth/login">Login</a>
+            <a href="/auth/register">Register</a>
+            <form method="POST" action="/auth/logout">
+                <button class="[ button ]">Logout</button>
+            </form>
+        </nav>
+        {% block content %}{% endblock %}
+        <toast-container>
+        <toast-content level="success" message="hello world" index=0></toast-content>
+        </toast-container>
+    </body>
+</html>

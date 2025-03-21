@@ -1,0 +1,13 @@
+[workspace]
+members = ['web', 'db', 'config', "mailer", "worker", "ui", "cli"]
+resolver = '2'
+default-members = ["web"]
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.test]
+opt-level = 1

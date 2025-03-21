@@ -1,0 +1,58 @@
+[package]
+name = "shipwright_web"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+doctest = false
+
+[dependencies]
+shipwright_config = { path = "../config" }
+shipwright_db = { path = "../db" }
+shipwright_mailer = { path = "../mailer" }
+shipwright_worker = { path = "../worker" }
+shipwright_ui = { path = "../ui" }
+
+axum = { version = "0.8.1", features = ["tracing", "macros"] }
+color-eyre = "0.6.3"
+tokio = { version = "1.43.0", features = [
+  "macros",
+  "rt-multi-thread",
+  "signal",
+] }
+tower = { version = "0.5.2", features = ["util"] }
+tower-http = { version = "0.6.2", features = [
+  "fs",
+  "timeout",
+  "trace",
+  "set-header",
+] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing-error = "0.2.1"
+thiserror = "2.0.11"
+async-trait = "0.1.86"
+axum-extra = { version = "0.10.0", features = ["cookie", "cookie-signed"] }
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.138"
+axum-login = "0.17.0"
+tower-sessions = { version = "0.14.0", features = ["signed"] }
+tower-sessions-sqlx-store = { version = "0.15.0", features = ["sqlite"] }
+password-auth = "1.0.0"
+bytes = "1.10.1"
+mime = "0.3.17"
+
+
+[dev-dependencies]
+shipwright_db = { path = "../db", features = ['test-helpers'] }
+axum-test = "17.2.0"
+fake = { version = "4.0.0", features = ["derive"] }
+http-body-util = "0.1.2"
+sqlx = { version = "0.8.3", default-features = false, features = [
+  "sqlite",
+  "runtime-tokio-rustls",
+  "macros",
+  "uuid",
+  "chrono",
+  "migrate",
+] }

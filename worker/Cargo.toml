@@ -1,0 +1,18 @@
+[package]
+name = "shipwright_worker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+shipwright_config = { path = "../config" }
+shipwright_db = { path = "../db" }
+shipwright_mailer = { path = "../mailer" }
+
+apalis = { version = "0.6.4", features = ["limit"] }
+apalis-sql = { version = "0.6.4", features = ["sqlite", "tokio-comp"] }
+tokio = { version = "1.43.0", features = [
+  "macros",
+  "rt-multi-thread",
+  "signal",
+] }
+thiserror = "2.0.12"

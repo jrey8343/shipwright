@@ -1,0 +1,23 @@
+[server]
+port = 8080
+ip = "0.0.0.0"
+host = "https://shipwright.fly.dev"
+
+[tracing]
+enable = true
+env_filter = "shipwright=debug,tower_http=debug,axum::rejection=trace"
+
+[database]
+url = "sqlite:///litefs/sqlite.db"
+
+[static_assets]
+precompressed = true
+path = "app/web/static"
+
+[mailer]
+base_url = "https://api.resend.com"
+sender = "dev@notebar.io"
+timeout = 2000
+
+[worker]
+database_url = "sqlite:///litefs/jobs.db"
