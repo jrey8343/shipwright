@@ -1,5 +1,7 @@
 use std::io::Write;
 
+use color_eyre::eyre::Report;
+
 /// A console UI session
 pub struct UI<'a> {
     stdout: &'a mut dyn Write,
@@ -91,7 +93,7 @@ impl<'a> UI<'a> {
     /// Prints an error message.
     ///
     /// If color output is enabled (see [`UI::new`]), the message will be formatted. If debug output is enabled (see [`UI::new`]), the error's stack trace will be printed as well.
-    pub fn error(&mut self, msg: &str, e: &anyhow::Error) {
+    pub fn error(&mut self, msg: &str, e: &Report) {
         let indentation = self.indentation();
         self.errout(&format!("{}{}{}", indentation, self.error_prefix, msg));
         if self.debug {
@@ -158,7 +160,7 @@ impl<'a> UI<'a> {
 #[cfg(test)]
 mod tests {
     use super::UI;
-    use anyhow::anyhow;
+    use color_eyre::eyre::eyre;
     use insta::assert_snapshot;
 
     #[test]
@@ -169,7 +171,7 @@ mod tests {
         ui.log("a general message");
         ui.info("an info message");
         ui.success("a success message ✓");
-        ui.error("an error message :(", &anyhow!("oh no…"));
+        ui.error("an error message :(", &eyre!("oh no…"));
 
         let output = read_buffer(stdout);
         let error_output = read_buffer(stderr);
@@ -192,7 +194,7 @@ mod tests {
         ui.log("a general message");
         ui.info("an info message");
         ui.success("a success message ✓");
-        ui.error("an error message :(", &anyhow!("oh no…"));
+        ui.error("an error message :(", &eyre!("oh no…"));
 
         let output = read_buffer(stdout);
         let error_output = read_buffer(stderr);

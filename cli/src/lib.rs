@@ -11,6 +11,8 @@ pub enum Error {
     Database(#[from] sqlx::Error),
     #[error("Filesystem io error")]
     Io(#[from] std::io::Error),
+    #[error("Failed to generate timestamp")]
+    Timestamp(#[from] std::time::SystemTimeError),
     #[error("Other error")]
     Other(#[from] color_eyre::Report),
 }

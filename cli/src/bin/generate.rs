@@ -1,12 +1,12 @@
-use anyhow::{anyhow, Context};
 use clap::{Parser, Subcommand};
+use color_eyre::eyre::{Context, ContextCompat, eyre};
 use cruet::{
     case::{snake::to_snake_case, to_class_case},
     string::{pluralize::to_plural, singularize::to_singular},
 };
-use guppy::{graph::PackageGraph, MetadataCommand};
+use guppy::{MetadataCommand, graph::PackageGraph};
 use liquid::Template;
-use my_app_cli::util::ui::UI;
+use shipwright_cli::{Error, util::ui::UI};
 use std::fs::{self, File, OpenOptions};
 use std::io::prelude::*;
 use std::process::ExitCode;
@@ -26,7 +26,7 @@ async fn main() -> ExitCode {
     match cli(&mut ui, args).await {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
-            ui.error(e.to_string().as_str(), &e);
+            ui.error(e.to_string().as_str(), &e.into());
             ExitCode::FAILURE
         }
     }
@@ -91,13 +91,13 @@ enum Commands {
 }
 
 #[allow(missing_docs)]
-async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), anyhow::Error> {
+async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
     match cli.command {
         Commands::Middleware { name } => {
             ui.info("Generating middleware…");
             let file_name = generate_middleware(name)
                 .await
-                .context("Could not generate middleware!")?;
+                .wrap_err("Could not generate middleware!")?;
             ui.success(&format!("Generated middleware {}.", &file_name));
             Ok(())
         }
@@ -105,13 +105,13 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), anyhow::Error> {
             ui.info("Generating controller…");
             let file_name = generate_controller(name.clone())
                 .await
-                .context("Could not generate controller!")?;
+                .wrap_err("Could not generate controller!")?;
             ui.success(&format!("Generated controller {}.", &file_name));
             ui.info("Do not forget to route the controller's actions in ./web/src/routes.rs!");
             ui.info("Generating test for controller…");
             let file_name = generate_controller_test(name)
                 .await
-                .context("Could not generate test for controller!")?;
+                .wrap_err("Could not generate test for controller!")?;
             ui.success(&format!("Generated test for controller {}.", &file_name));
             Ok(())
         }
@@ -119,7 +119,7 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), anyhow::Error> {
             ui.info("Generating test for controller…");
             let file_name = generate_controller_test(name)
                 .await
-                .context("Could not generate test for controller!")?;
+                .wrap_err("Could not generate test for controller!")?;
             ui.success(&format!("Generated test for controller {}.", &file_name));
             Ok(())
         }
@@ -127,7 +127,7 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), anyhow::Error> {
             ui.info("Generating migration…");
             let file_name = generate_migration(name)
                 .await
-                .context("Could not generate migration!")?;
+                .wrap_err("Could not generate migration!")?;
             ui.success(&format!("Generated migration {}.", &file_name));
             Ok(())
         }
@@ -135,7 +135,7 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), anyhow::Error> {
             ui.info("Generating entity…");
             let struct_name = generate_entity(name)
                 .await
-                .context("Could not generate entity!")?;
+                .wrap_err("Could not generate entity!")?;
             ui.success(&format!("Generated entity {}.", &struct_name));
             Ok(())
         }
@@ -143,7 +143,7 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), anyhow::Error> {
             ui.info("Generating entity test helper…");
             let struct_name = generate_entity_test_helper(name)
                 .await
-                .context("Could not generate entity test helper!")?;
+                .wrap_err("Could not generate entity test helper!")?;
             ui.success(&format!(
                 "Generated test helper for entity {}.",
                 &struct_name
@@ -154,12 +154,12 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), anyhow::Error> {
             ui.info("Generating CRUD controller…");
             let file_name = generate_crud_controller(name.clone())
                 .await
-                .context("Could not generate CRUD controller!")?;
+                .wrap_err("Could not generate CRUD controller!")?;
             ui.success(&format!("Generated CRUD controller {}.", &file_name));
             ui.info("Do not forget to route the controller's actions in ./web/src/routes.rs!");
             let file_name = generate_crud_controller_test(name.clone())
                 .await
-                .context("Could not generate test for CRUD controller!")?;
+                .wrap_err("Could not generate test for CRUD controller!")?;
             ui.success(&format!(
                 "Generated test for CRUD controller {}.",
                 &file_name
@@ -170,7 +170,7 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), anyhow::Error> {
             ui.info("Generating test for CRUD controller…");
             let file_name = generate_crud_controller_test(name.clone())
                 .await
-                .context("Could not generate test for CRUD controller!")?;
+                .wrap_err("Could not generate test for CRUD controller!")?;
             ui.success(&format!(
                 "Generated test for CRUD controller {}.",
                 &file_name
@@ -180,7 +180,7 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), anyhow::Error> {
     }
 }
 
-async fn generate_middleware(name: String) -> Result<String, anyhow::Error> {
+async fn generate_middleware(name: String) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
 
     let template = get_liquid_template("middleware/file.rs")?;
@@ -189,7 +189,7 @@ async fn generate_middleware(name: String) -> Result<String, anyhow::Error> {
     });
     let output = template
         .render(&variables)
-        .context("Failed to render Liquid template")?;
+        .wrap_err("Failed to render Liquid template")?;
 
     let file_path = format!("./web/src/middlewares/{}.rs", name);
     create_project_file(&file_path, output.as_bytes())?;
@@ -201,7 +201,7 @@ async fn generate_middleware(name: String) -> Result<String, anyhow::Error> {
     Ok(file_path)
 }
 
-async fn generate_controller(name: String) -> Result<String, anyhow::Error> {
+async fn generate_controller(name: String) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
 
     let template = get_liquid_template("controller/minimal/controller.rs")?;
@@ -210,7 +210,7 @@ async fn generate_controller(name: String) -> Result<String, anyhow::Error> {
     });
     let output = template
         .render(&variables)
-        .context("Failed to render Liquid template")?;
+        .wrap_err("Failed to render Liquid template")?;
 
     let file_path = format!("./web/src/controllers/{}.rs", name);
     create_project_file(&file_path, output.as_bytes())?;
@@ -222,7 +222,7 @@ async fn generate_controller(name: String) -> Result<String, anyhow::Error> {
     Ok(file_path)
 }
 
-async fn generate_controller_test(name: String) -> Result<String, anyhow::Error> {
+async fn generate_controller_test(name: String) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
     let macros_crate_name = get_member_package_name("macros")?;
     let macros_crate_name = to_snake_case(&macros_crate_name);
@@ -239,7 +239,7 @@ async fn generate_controller_test(name: String) -> Result<String, anyhow::Error>
     });
     let output = template
         .render(&variables)
-        .context("Failed to render Liquid template")?;
+        .wrap_err("Failed to render Liquid template")?;
 
     let file_path = format!("./web/tests/api/{name}_test.rs");
     create_project_file(&file_path, output.as_bytes())?;
@@ -248,7 +248,7 @@ async fn generate_controller_test(name: String) -> Result<String, anyhow::Error>
     Ok(file_path)
 }
 
-async fn generate_migration(name: String) -> Result<String, anyhow::Error> {
+async fn generate_migration(name: String) -> Result<String, Error> {
     let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let file_name = format!("{}__{}.sql", timestamp.as_secs(), name);
     let path = format!("./db/migrations/{}", file_name);
@@ -257,7 +257,7 @@ async fn generate_migration(name: String) -> Result<String, anyhow::Error> {
     Ok(path)
 }
 
-async fn generate_entity(name: String) -> Result<String, anyhow::Error> {
+async fn generate_entity(name: String) -> Result<String, Error> {
     let name = to_singular(&name).to_lowercase();
     let name_plural = to_plural(&name);
     let struct_name = to_class_case(&name);
@@ -270,7 +270,7 @@ async fn generate_entity(name: String) -> Result<String, anyhow::Error> {
     });
     let output = template
         .render(&variables)
-        .context("Failed to render Liquid template")?;
+        .wrap_err("Failed to render Liquid template")?;
 
     create_project_file(
         &format!("./db/src/entities/{}.rs", name_plural),
@@ -284,7 +284,7 @@ async fn generate_entity(name: String) -> Result<String, anyhow::Error> {
     Ok(struct_name)
 }
 
-async fn generate_entity_test_helper(name: String) -> Result<String, anyhow::Error> {
+async fn generate_entity_test_helper(name: String) -> Result<String, Error> {
     let name = to_singular(&name).to_lowercase();
     let name_plural = to_plural(&name);
     let struct_name = to_class_case(&name);
@@ -297,7 +297,7 @@ async fn generate_entity_test_helper(name: String) -> Result<String, anyhow::Err
     });
     let output = template
         .render(&variables)
-        .context("Failed to render Liquid template")?;
+        .wrap_err("Failed to render Liquid template")?;
 
     create_project_file(
         &format!("./db/src/test_helpers/{}.rs", name_plural),
@@ -311,7 +311,7 @@ async fn generate_entity_test_helper(name: String) -> Result<String, anyhow::Err
     Ok(struct_name)
 }
 
-async fn generate_crud_controller(name: String) -> Result<String, anyhow::Error> {
+async fn generate_crud_controller(name: String) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
     let name_plural = to_plural(&name);
     let name_singular = to_singular(&name);
@@ -331,7 +331,7 @@ async fn generate_crud_controller(name: String) -> Result<String, anyhow::Error>
     });
     let output = template
         .render(&variables)
-        .context("Failed to render Liquid template")?;
+        .wrap_err("Failed to render Liquid template")?;
 
     let file_path = format!("./web/src/controllers/{}.rs", name);
     create_project_file(&file_path, output.as_bytes())?;
@@ -343,7 +343,7 @@ async fn generate_crud_controller(name: String) -> Result<String, anyhow::Error>
     Ok(file_path)
 }
 
-async fn generate_crud_controller_test(name: String) -> Result<String, anyhow::Error> {
+async fn generate_crud_controller_test(name: String) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
     let name_plural = to_plural(&name);
     let name_singular = to_singular(&name);
@@ -366,7 +366,7 @@ async fn generate_crud_controller_test(name: String) -> Result<String, anyhow::E
     });
     let output = template
         .render(&variables)
-        .context("Failed to render Liquid template")?;
+        .wrap_err("Failed to render Liquid template")?;
 
     let file_path = format!("./web/tests/api/{name}_test.rs");
     create_project_file(&file_path, output.as_bytes())?;
@@ -375,33 +375,33 @@ async fn generate_crud_controller_test(name: String) -> Result<String, anyhow::E
     Ok(file_path)
 }
 
-fn get_liquid_template(path: &str) -> Result<Template, anyhow::Error> {
+fn get_liquid_template(path: &str) -> Result<Template, Error> {
     let blueprint = BLUEPRINTS_DIR
         .get_file(path)
-        .context(format!("Failed to get blueprint {}!", path))?;
+        .wrap_err(format!("Failed to get blueprint {}!", path))?;
     let template_source = blueprint
         .contents_utf8()
-        .context(format!("Failed to read blueprint {}!", path))?;
+        .wrap_err(format!("Failed to read blueprint {}!", path))?;
     let template = liquid::ParserBuilder::with_stdlib()
         .build()
         .unwrap()
         .parse(template_source)
-        .context("Failed to parse blueprint as Liquid template")?;
+        .wrap_err("Failed to parse blueprint as Liquid template")?;
 
     Ok(template)
 }
 
-fn create_project_file(path: &str, contents: &[u8]) -> Result<(), anyhow::Error> {
-    let mut file = File::create(path).context(format!(r#"Could not create file "{}""#, path))?;
+fn create_project_file(path: &str, contents: &[u8]) -> Result<(), Error> {
+    let mut file = File::create(path).wrap_err(format!(r#"Could not create file "{}""#, path))?;
     file.write_all(contents)
-        .context(format!(r#"Could not write file "{}""#, path))?;
+        .wrap_err(format!(r#"Could not write file "{}""#, path))?;
 
     Ok(())
 }
 
-fn append_to_project_file(path: &str, contents: &str) -> Result<(), anyhow::Error> {
+fn append_to_project_file(path: &str, contents: &str) -> Result<(), Error> {
     let file_contents =
-        fs::read_to_string(path).context(format!(r#"Could not read file "{}"!"#, path))?;
+        fs::read_to_string(path).wrap_err(format!(r#"Could not read file "{}"!"#, path))?;
     let file_contents = file_contents.trim();
 
     let mut options = OpenOptions::new();
@@ -415,9 +415,9 @@ fn append_to_project_file(path: &str, contents: &str) -> Result<(), anyhow::Erro
 
     let mut file = options
         .open(path)
-        .context(format!(r#"Could not open file "{}"!"#, path))?;
+        .wrap_err(format!(r#"Could not open file "{}"!"#, path))?;
 
-    writeln!(file, "{}", contents).context(format!(r#"Failed to append to file "{}"!"#, path))?;
+    writeln!(file, "{}", contents).wrap_err(format!(r#"Failed to append to file "{}"!"#, path))?;
 
     Ok(())
 }
@@ -426,7 +426,7 @@ fn has_db() -> bool {
     get_member_package_name("db").is_ok()
 }
 
-fn get_member_package_name(path: &str) -> Result<String, anyhow::Error> {
+fn get_member_package_name(path: &str) -> Result<String, Error> {
     let mut cmd = MetadataCommand::new();
     let package_graph = PackageGraph::from_command(cmd.manifest_path("./Cargo.toml")).unwrap();
     let workspace = package_graph.workspace();
@@ -436,5 +436,5 @@ fn get_member_package_name(path: &str) -> Result<String, anyhow::Error> {
             return Ok(String::from(metadata.name()));
         }
     }
-    Err(anyhow!("Could not find workspace member at path: {}", path))
+    Err(eyre!("Could not find workspace member at path: {}", path).into())
 }
