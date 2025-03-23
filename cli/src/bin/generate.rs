@@ -6,7 +6,14 @@ use cruet::{
 };
 use guppy::{MetadataCommand, graph::PackageGraph};
 use liquid::Template;
-use shipwright_cli::{Error, util::ui::UI};
+use sea_query::{Alias, ColumnDef, Table};
+use shipwright_cli::{
+    Error,
+    util::{
+        query::{Field, generate_sql, parse_cli_fields},
+        ui::UI,
+    },
+};
 use std::fs::{self, File, OpenOptions};
 use std::io::prelude::*;
 use std::process::ExitCode;
@@ -67,6 +74,10 @@ enum Commands {
     Migration {
         #[arg(help = "The name of the migration.")]
         name: String,
+        #[arg(help = "The table name.")]
+        table: String,
+        #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
+        fields: Vec<String>,
     },
     #[command(about = "Generate an entity")]
     Entity {
@@ -78,7 +89,7 @@ enum Commands {
         #[arg(help = "The name of the entity the test helper is for.")]
         name: String,
     },
-    #[command(about = "Generate an example CRUD controller")]
+    #[command(about = "Generate:web an example CRUD controller")]
     CrudController {
         #[arg(help = "The name of the entity the controller is for.")]
         name: String,
@@ -123,9 +134,13 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated test for controller {}.", &file_name));
             Ok(())
         }
-        Commands::Migration { name } => {
+        Commands::Migration {
+            name,
+            table,
+            fields,
+        } => {
             ui.info("Generating migration…");
-            let file_name = generate_migration(name)
+            let file_name = generate_migration(name, table, parse_cli_fields(fields)?)
                 .await
                 .wrap_err("Could not generate migration!")?;
             ui.success(&format!("Generated migration {}.", &file_name));
@@ -248,11 +263,26 @@ async fn generate_controller_test(name: String) -> Result<String, Error> {
     Ok(file_path)
 }
 
-async fn generate_migration(name: String) -> Result<String, Error> {
+async fn generate_migration(
+    name: String,
+    table: String,
+    fields: Vec<Field>,
+) -> Result<String, Error> {
+    let generated_sql = generate_sql(&table, fields).await?;
+
+    let template = get_liquid_template("migration/file.sql")?;
+
+    let variables = liquid::object!({
+        "generated_sql": generated_sql,
+    });
+    let output = template
+        .render(&variables)
+        .wrap_err("Failed to render Liquid template")?;
+
     let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let file_name = format!("{}__{}.sql", timestamp.as_secs(), name);
     let path = format!("./db/migrations/{}", file_name);
-    create_project_file(&path, "".as_bytes())?;
+    create_project_file(&path, output.as_bytes())?;
 
     Ok(path)
 }
