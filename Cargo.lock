@@ -3781,6 +3781,7 @@ dependencies = [
  "insta",
  "liquid",
  "sea-query",
+ "serde",
  "shipwright_config",
  "sqlx",
  "thiserror 2.0.12",

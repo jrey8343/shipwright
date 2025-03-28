@@ -75,3 +75,14 @@ pub trait Entity {
         db_pool: &SqlitePool,
     ) -> Result<Vec<Self::Record<'_>>, Error>;
 }
+pub mod content:string512!s;
+pub mod contents;
+pub mod contents;
+pub mod contents;
+pub mod contents;
+pub mod contents;
+pub mod contents;
+pub mod contents;
+pub mod contents;
+pub mod contents;
+pub mod invoices;

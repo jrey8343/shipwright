@@ -6,11 +6,10 @@ use cruet::{
 };
 use guppy::{MetadataCommand, graph::PackageGraph};
 use liquid::Template;
-use sea_query::{Alias, ColumnDef, Table};
 use shipwright_cli::{
     Error,
     util::{
-        query::{Field, generate_sql, parse_cli_fields},
+        query::{Field, generate_sql, generate_struct_fields, parse_cli_fields},
         ui::UI,
     },
 };
@@ -83,6 +82,8 @@ enum Commands {
     Entity {
         #[arg(help = "The name of the entity.")]
         name: String,
+        #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
+        fields: Vec<String>,
     },
     #[command(about = "Generate an entity test helper")]
     EntityTestHelper {
@@ -146,9 +147,9 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated migration {}.", &file_name));
             Ok(())
         }
-        Commands::Entity { name } => {
+        Commands::Entity { name, fields } => {
             ui.info("Generating entity…");
-            let struct_name = generate_entity(name)
+            let struct_name = generate_entity(name, parse_cli_fields(fields)?)
                 .await
                 .wrap_err("Could not generate entity!")?;
             ui.success(&format!("Generated entity {}.", &struct_name));
@@ -287,25 +288,29 @@ async fn generate_migration(
     Ok(path)
 }
 
-async fn generate_entity(name: String) -> Result<String, Error> {
+async fn generate_entity(name: String, fields: Vec<Field>) -> Result<String, Error> {
     let name = to_singular(&name).to_lowercase();
     let name_plural = to_plural(&name);
     let struct_name = to_class_case(&name);
 
+    let (entity_struct_fields, changeset_struct_fields) = generate_struct_fields(&fields);
+
     let template = get_liquid_template("entity/file.rs")?;
+
     let variables = liquid::object!({
         "entity_struct_name": struct_name,
         "entity_singular_name": name,
         "entity_plural_name": name_plural,
+        "entity_struct_fields": entity_struct_fields,
+        "changeset_struct_fields": changeset_struct_fields,
     });
+
     let output = template
         .render(&variables)
         .wrap_err("Failed to render Liquid template")?;
 
-    create_project_file(
-        &format!("./db/src/entities/{}.rs", name_plural),
-        output.as_bytes(),
-    )?;
+    let file_path = format!("./db/src/entities/{}.rs", name_plural);
+    create_project_file(&file_path, output.as_bytes())?;
     append_to_project_file(
         "./db/src/entities/mod.rs",
         &format!("pub mod {};", name_plural),
@@ -313,7 +318,6 @@ async fn generate_entity(name: String) -> Result<String, Error> {
 
     Ok(struct_name)
 }
-
 async fn generate_entity_test_helper(name: String) -> Result<String, Error> {
     let name = to_singular(&name).to_lowercase();
     let name_plural = to_plural(&name);

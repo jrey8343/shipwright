@@ -1,6 +1,7 @@
 use color_eyre::eyre::eyre;
 use cruet::to_plural;
 use sea_query::{Alias, ColumnDef};
+use serde::Serialize;
 
 use crate::Error;
 
@@ -142,6 +143,7 @@ impl FieldType {
             _ => None,
         }
     }
+    /// Parses the input field type and translates it to a type that sea-query can understand.
     pub fn to_column_def(&self, name: &str) -> ColumnDef {
         let mut col = ColumnDef::new(Alias::new(name));
 
@@ -240,6 +242,58 @@ impl FieldType {
 
         col
     }
+
+    pub fn as_sqlx_type(&self, _name: &str) -> (String, bool, Option<&'static str>) {
+        match self {
+            FieldType::Uuid { nullable, .. } => (
+                if *nullable { "Option<Uuid>" } else { "Uuid" }.into(),
+                false,
+                None,
+            ),
+            FieldType::String {
+                nullable, length, ..
+            } => {
+                let ty = if *nullable {
+                    "Option<String>"
+                } else {
+                    "String"
+                };
+                let needs_validation = length.map_or_else(|| true, |l| l > 0);
+                (ty.into(), needs_validation, Some("Name()"))
+            }
+            FieldType::Integer { nullable, .. } => {
+                let ty = if *nullable { "Option<i64>" } else { "i64" };
+                (ty.into(), false, None)
+            }
+            FieldType::Float { nullable, .. } => (
+                if *nullable { "Option<f32>" } else { "f32" }.into(),
+                false,
+                None,
+            ),
+            FieldType::Double { nullable, .. } => (
+                if *nullable { "Option<f64>" } else { "f64" }.into(),
+                false,
+                None,
+            ),
+            FieldType::Decimal { nullable, .. } => (
+                if *nullable {
+                    "Option<Decimal>"
+                } else {
+                    "Decimal"
+                }
+                .into(),
+                false,
+                None,
+            ),
+            FieldType::Boolean { nullable } => (
+                if *nullable { "Option<bool>" } else { "bool" }.into(),
+                false,
+                None,
+            ),
+            FieldType::Date | FieldType::DateTime => ("chrono::NaiveDateTime".into(), false, None),
+            FieldType::Json { .. } => ("serde_json::JsonValue".into(), false, None),
+        }
+    }
 }
 
 pub fn parse_cli_fields(raw_fields: Vec<String>) -> Result<Vec<Field>, Error> {
@@ -318,4 +372,51 @@ pub async fn generate_sql(table_name: &str, fields: Vec<Field>) -> Result<String
 
     let sql = table.to_string(sea_query::SqliteQueryBuilder);
     Ok(sql)
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct StructField {
+    pub name: String,
+    pub ty: String,
+}
+
+pub fn generate_struct_fields(fields: &[Field]) -> (Vec<StructField>, Vec<StructField>) {
+    let mut struct_fields = vec![];
+    let mut changeset_fields = vec![];
+
+    for field in fields {
+        match field {
+            Field::Column(name, field_type) => {
+                let (ty, _needs_validation, _faker) = field_type.as_sqlx_type(name);
+
+                // Always include in the main struct
+                struct_fields.push(StructField {
+                    name: name.clone(),
+                    ty: ty.clone(),
+                });
+
+                // Skip `id` field for changeset
+                if name != "id" {
+                    changeset_fields.push(StructField {
+                        name: name.clone(),
+                        ty,
+                    });
+                }
+            }
+            Field::ForeignKey { local_key, .. } => {
+                // Foreign keys like user_id or post_id should be included in both
+                struct_fields.push(StructField {
+                    name: local_key.clone(),
+                    ty: "Uuid".to_string(),
+                });
+
+                changeset_fields.push(StructField {
+                    name: local_key.clone(),
+                    ty: "Uuid".to_string(),
+                });
+            }
+        }
+    }
+
+    (struct_fields, changeset_fields)
 }
