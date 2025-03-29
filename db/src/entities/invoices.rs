@@ -92,7 +92,7 @@ impl Entity for Invoice {
         invoice.validate()?;
 
         let invoice = sqlx::query_as::<_, Invoice>(
-            r#"insert into invoices (amount, ) values (?, ) returning id, amount, created_at, updated_at"#,
+            r#"insert into invoices (amount) values (?) returning id, amount, created_at, updated_at"#,
         )
         .bind(invoice.amount)
         
@@ -130,7 +130,7 @@ impl Entity for Invoice {
         invoice.validate()?;
 
         let invoice = sqlx::query_as::<_, Invoice>(
-            r#"update invoices set (amount, ) = (?, ) where id = ? returning id, amount, created_at, updated_at"#,
+            r#"update invoices set (amount) = (?) where id = ? returning id, amount, created_at, updated_at"#,
         )
         .bind(id)
         .bind(invoice.amount)

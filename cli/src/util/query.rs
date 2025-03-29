@@ -414,8 +414,8 @@ pub fn generate_struct_fields(fields: &[Field]) -> (Vec<StructField>, Vec<Change
                     ty: ty.clone(),
                 });
 
-                // Skip `id` in changeset
-                if name != "id" {
+                // Skip `id`, `created_at`, `updated_at` in changeset
+                if name != "id" && name != "created_at" && name != "updated_at" {
                     changeset_fields.push(ChangesetField {
                         name: name.clone(),
                         ty,
