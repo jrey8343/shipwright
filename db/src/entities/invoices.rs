@@ -1,11 +1,13 @@
 #[cfg(feature = "test-helpers")]
 use fake::{faker, Dummy};
 
+use async_trait::async_trait;
 use serde::Deserialize;
 use serde::Serialize;
-use sqlx::{Sqlite, FromRow};
+use sqlx::{Sqlite, SqlitePool, FromRow};
 use uuid::Uuid;
 use validator::Validate;
+use crate::{Entity, Error, transaction};
 
 /// A struct which maps the fields of an invoice with native Sqlite types.
 ///
@@ -13,15 +15,15 @@ use validator::Validate;
 /// struct.
 ///
 /// ```
-/// let invoices = sqlx::query_as!(Invoice, r#"SELECT * FROM
-/// invoices"#).fetch_all(&pool).await?;
+/// let invoices = sqlx::query_as(r#"SELECT * FROM
+/// invoices where id = ?"#).bind(id).fetch_all(&pool).await?;
 /// ```
 #[derive(Serialize, Debug, Deserialize, FromRow)]
 pub struct Invoice {
     pub id: Uuid,
-    pub amount: Option<f32>,
-    pub created_at: chrono::NaiveDateTime,
-    pub updated_at: chrono::NaiveDateTime,
+    pub amount: Option<f64>,
+    pub created_at: time::OffsetDateTime,
+    pub updated_at: time::OffsetDateTime,
     
 }
 
@@ -37,11 +39,136 @@ pub struct Invoice {
 #[derive(Deserialize, Validate, Clone)]
 #[cfg_attr(feature = "test-helpers", derive(Serialize, Dummy))]
 pub struct InvoiceChangeset {
-    #[cfg_attr(feature = "test-helpers", dummy(faker = "1.0..100.0"))]
-    pub amount: Option<f32>,
-    #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::chrono::en::DateTime()"))]
-    pub created_at: chrono::NaiveDateTime,
-    #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::chrono::en::DateTime()"))]
-    pub updated_at: chrono::NaiveDateTime,
+    #[cfg_attr(feature = "test-helpers", dummy(faker = "1.00..100.00"))]
+    pub amount: Option<f64>,
     
+}
+
+/// The Entity trait implements all basic CRUD operations for the Invoice.
+///
+/// This allows us to GET | POST | PUT | DELETE invoices in our controllers.
+///
+/// ```
+/// let invoice = Invoice::load(1, &pool).await?;
+#[async_trait]
+impl Entity for Invoice {
+    type Id = Uuid;
+
+    type Record<'a> = Invoice;
+
+    type Changeset = InvoiceChangeset;
+
+    async fn load_all<'a>(
+        executor: impl sqlx::Executor<'_, Database = Sqlite>,
+    ) -> Result<Vec<Invoice>, Error> {
+        let invoices = sqlx::query_as::<_, Invoice>(
+            r#"select id, amount, created_at, updated_at from invoices"#
+        )
+        .fetch_all(executor)
+        .await?;
+
+        Ok(invoices)
+    }
+
+    async fn load<'a>(
+        id: Self::Id,
+        executor: impl sqlx::Executor<'_, Database = Sqlite>,
+    ) -> Result<Invoice, Error> {
+        let invoice = sqlx::query_as::<_, Invoice>(
+            r#"select id, amount, created_at, updated_at from invoices where id = ?"#,
+        )
+        .bind(id)
+        .fetch_optional(executor)
+        .await?
+        .ok_or(Error::NoRecordFound)?;
+
+        Ok(invoice)
+    }
+
+    async fn create<'a>(
+        invoice: InvoiceChangeset,
+        executor: impl sqlx::Executor<'_, Database = Sqlite>,
+    ) -> Result<Invoice, Error> {
+        invoice.validate()?;
+
+        let invoice = sqlx::query_as::<_, Invoice>(
+            r#"insert into invoices (amount, ) values (?, ) returning id, amount, created_at, updated_at"#,
+        )
+        .bind(invoice.amount)
+        
+        .fetch_one(executor)
+        .await?;
+
+        Ok(invoice)
+    }
+
+    async fn create_batch(
+        invoices: Vec<InvoiceChangeset>,
+        pool: &SqlitePool,
+    ) -> Result<Vec<Invoice>, Error> {
+        let mut tx = transaction(pool).await?;
+
+        let mut results: Vec<Invoice> = vec![];
+
+        for invoice in invoices {
+            invoice.validate()?;
+
+            let result = Invoice::create(invoice, &mut *tx).await?;
+            results.push(result);
+        }
+
+        tx.commit().await?;
+
+        Ok(results)
+    }
+
+    async fn update<'a>(
+        id: Self::Id,
+        invoice: InvoiceChangeset,
+        executor: impl sqlx::Executor<'_, Database = Sqlite>,
+    ) -> Result<Invoice, Error> {
+        invoice.validate()?;
+
+        let invoice = sqlx::query_as::<_, Invoice>(
+            r#"update invoices set (amount, ) = (?, ) where id = ? returning id, amount, created_at, updated_at"#,
+        )
+        .bind(id)
+        .bind(invoice.amount)
+        
+        .fetch_optional(executor)
+        .await?
+        .ok_or(Error::NoRecordFound)?;
+
+        Ok(invoice)
+    }
+
+    async fn delete<'a>(
+        id: Self::Id,
+        executor: impl sqlx::Executor<'_, Database = Sqlite>,
+    ) -> Result<Invoice, Error> {
+        let invoice = sqlx::query_as::<_, Invoice>(
+            r#"delete from invoices where id = ? returning id, amount, created_at, updated_at"#,
+        )
+        .bind(id)
+        .fetch_optional(executor)
+        .await?
+        .ok_or(Error::NoRecordFound)?;
+
+        Ok(invoice)
+    }
+
+    async fn delete_batch(ids: Vec<Self::Id>, pool: &SqlitePool) -> Result<Vec<Invoice>, Error> {
+        let mut tx = transaction(pool).await?;
+
+        let mut results: Vec<Invoice> = vec![];
+
+        for id in ids {
+            let result = Self::delete(id, &mut *tx).await?;
+            results.push(result);
+        }
+
+        tx.commit().await?;
+
+        Ok(results)
+    }
 }

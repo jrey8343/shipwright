@@ -1,6 +1,6 @@
 use color_eyre::eyre::eyre;
 use cruet::to_plural;
-use sea_query::{Alias, ColumnDef};
+use sea_query::{Alias, ColumnDef, Expr};
 use serde::Serialize;
 
 use crate::Error;
@@ -143,7 +143,7 @@ impl FieldType {
             _ => None,
         }
     }
-    /// Parses the input field type and translates it to a type that sea-query can understand.
+
     pub fn to_column_def(&self, name: &str) -> ColumnDef {
         let mut col = ColumnDef::new(Alias::new(name));
 
@@ -168,7 +168,7 @@ impl FieldType {
                 } else if let Some(len) = length {
                     col.string_len(*len);
                 } else {
-                    col.string(); // fallback
+                    col.string();
                 }
                 if !nullable {
                     col.not_null();
@@ -225,7 +225,9 @@ impl FieldType {
                 col.date().not_null();
             }
             FieldType::DateTime => {
-                col.date_time().not_null();
+                col.date_time()
+                    .not_null()
+                    .default(Expr::cust("CURRENT_TIMESTAMP"));
             }
             FieldType::Json { binary, unique } => {
                 if *binary {
@@ -269,14 +271,14 @@ impl FieldType {
                 "Decimal"
             }
             .into(),
-
             FieldType::Boolean { nullable } => {
                 if *nullable { "Option<bool>" } else { "bool" }.into()
             }
-            FieldType::Date | FieldType::DateTime => "chrono::NaiveDateTime".into(),
+            FieldType::Date | FieldType::DateTime => "time::OffsetDateTime".into(),
             FieldType::Json { .. } => "serde_json::JsonValue".into(),
         }
     }
+
     pub fn as_faker(&self) -> Option<String> {
         match self {
             FieldType::String { .. } => Some("faker::name::en::Name()".to_owned()),
@@ -285,17 +287,16 @@ impl FieldType {
             FieldType::Float { .. } => Some("1.0..100.0".to_owned()),
             FieldType::Double { .. } => Some("1.00..100.00".to_owned()),
             FieldType::Boolean { .. } => Some("faker::boolean::en::Boolean()".to_owned()),
-            FieldType::Date | FieldType::DateTime => {
-                Some("faker::chrono::en::DateTime()".to_owned())
-            }
+            FieldType::Date | FieldType::DateTime => Some("faker::time::en::DateTime()".to_owned()),
             _ => None,
         }
     }
+
     pub fn as_validation(&self) -> Option<String> {
         match self {
             FieldType::String { length, .. } => {
                 if let Some(len) = length {
-                    Some(format!("length(min = 1, max = {})", len)) // Needs to be constructed dynamically elsewhere
+                    Some(format!("length(min = 1, max = {})", len))
                 } else {
                     Some("length(min = 1)".to_string())
                 }
@@ -305,6 +306,7 @@ impl FieldType {
     }
 }
 
+// rest of your code remains unchanged
 pub fn parse_cli_fields(raw_fields: Vec<String>) -> Result<Vec<Field>, Error> {
     let mut fields = vec![];
 
