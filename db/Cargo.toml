@@ -26,7 +26,13 @@ sqlx = { version = "0.8.3", default-features = false, features = [
 ] }
 thiserror = "2.0.11"
 validator = { version = "0.20.0", features = ["derive"] }
-fake = { version = "4.0.0", features = ["derive"], optional = true }
+fake = { version = "4.0.0", features = [
+  "derive",
+  "uuid",
+  "chrono",
+], optional = true }
 axum-login = "0.17.0"
 argon2 = { version = "0.5.3", features = ["std"] }
 rand = { version = "0.9.0", features = ["std_rng"] }
+chrono = { version = "0.4.40", features = ["serde"] }
+uuid = { version = "1.16.0", features = ["v4", "serde"] }

@@ -71,8 +71,6 @@ enum Commands {
     },
     #[command(about = "Generate a migration")]
     Migration {
-        #[arg(help = "The name of the migration.")]
-        name: String,
         #[arg(help = "The table name.")]
         table: String,
         #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
@@ -135,13 +133,10 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated test for controller {}.", &file_name));
             Ok(())
         }
-        Commands::Migration {
-            name,
-            table,
-            fields,
-        } => {
+        Commands::Migration { table, fields } => {
             ui.info("Generating migration…");
-            let file_name = generate_migration(name, table, parse_cli_fields(fields)?)
+            let migration_name = format!("create_{}_table", to_plural(&to_snake_case(&table)));
+            let file_name = generate_migration(migration_name, table, parse_cli_fields(fields)?)
                 .await
                 .wrap_err("Could not generate migration!")?;
             ui.success(&format!("Generated migration {}.", &file_name));

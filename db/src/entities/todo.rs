@@ -6,8 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Sqlite, SqlitePool, prelude::FromRow};
 use validator::Validate;
 
-use super::Entity;
-use crate::{Error, transaction};
+use crate::{Entity, Error, transaction};
 
 /// A todo item.
 #[derive(Serialize, Debug, Deserialize, FromRow)]

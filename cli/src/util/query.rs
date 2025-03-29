@@ -243,55 +243,64 @@ impl FieldType {
         col
     }
 
-    pub fn as_sqlx_type(&self, _name: &str) -> (String, bool, Option<&'static str>) {
+    pub fn as_sqlx_type(&self) -> String {
         match self {
-            FieldType::Uuid { nullable, .. } => (
-                if *nullable { "Option<Uuid>" } else { "Uuid" }.into(),
-                false,
-                None,
-            ),
-            FieldType::String {
-                nullable, length, ..
-            } => {
-                let ty = if *nullable {
-                    "Option<String>"
-                } else {
-                    "String"
-                };
-                let needs_validation = length.map_or_else(|| true, |l| l > 0);
-                (ty.into(), needs_validation, Some("Name()"))
+            FieldType::Uuid { nullable, .. } => {
+                if *nullable { "Option<Uuid>" } else { "Uuid" }.into()
             }
+            FieldType::String { nullable, .. } => if *nullable {
+                "Option<String>"
+            } else {
+                "String"
+            }
+            .into(),
             FieldType::Integer { nullable, .. } => {
-                let ty = if *nullable { "Option<i64>" } else { "i64" };
-                (ty.into(), false, None)
+                if *nullable { "Option<i64>" } else { "i64" }.into()
             }
-            FieldType::Float { nullable, .. } => (
-                if *nullable { "Option<f32>" } else { "f32" }.into(),
-                false,
-                None,
-            ),
-            FieldType::Double { nullable, .. } => (
-                if *nullable { "Option<f64>" } else { "f64" }.into(),
-                false,
-                None,
-            ),
-            FieldType::Decimal { nullable, .. } => (
-                if *nullable {
-                    "Option<Decimal>"
+            FieldType::Float { nullable, .. } => {
+                if *nullable { "Option<f32>" } else { "f32" }.into()
+            }
+            FieldType::Double { nullable, .. } => {
+                if *nullable { "Option<f64>" } else { "f64" }.into()
+            }
+            FieldType::Decimal { nullable, .. } => if *nullable {
+                "Option<Decimal>"
+            } else {
+                "Decimal"
+            }
+            .into(),
+
+            FieldType::Boolean { nullable } => {
+                if *nullable { "Option<bool>" } else { "bool" }.into()
+            }
+            FieldType::Date | FieldType::DateTime => "chrono::NaiveDateTime".into(),
+            FieldType::Json { .. } => "serde_json::JsonValue".into(),
+        }
+    }
+    pub fn as_faker(&self) -> Option<String> {
+        match self {
+            FieldType::String { .. } => Some("faker::name::en::Name()".to_owned()),
+            FieldType::Uuid { .. } => Some("faker::uuid::UUIDv4::Uuid()".to_owned()),
+            FieldType::Integer { .. } => Some("1..100".to_owned()),
+            FieldType::Float { .. } => Some("1.0..100.0".to_owned()),
+            FieldType::Double { .. } => Some("1.00..100.00".to_owned()),
+            FieldType::Boolean { .. } => Some("faker::boolean::en::Boolean()".to_owned()),
+            FieldType::Date | FieldType::DateTime => {
+                Some("faker::chrono::en::DateTime()".to_owned())
+            }
+            _ => None,
+        }
+    }
+    pub fn as_validation(&self) -> Option<String> {
+        match self {
+            FieldType::String { length, .. } => {
+                if let Some(len) = length {
+                    Some(format!("length(min = 1, max = {})", len)) // Needs to be constructed dynamically elsewhere
                 } else {
-                    "Decimal"
+                    Some("length(min = 1)".to_string())
                 }
-                .into(),
-                false,
-                None,
-            ),
-            FieldType::Boolean { nullable } => (
-                if *nullable { "Option<bool>" } else { "bool" }.into(),
-                false,
-                None,
-            ),
-            FieldType::Date | FieldType::DateTime => ("chrono::NaiveDateTime".into(), false, None),
-            FieldType::Json { .. } => ("serde_json::JsonValue".into(), false, None),
+            }
+            _ => None,
         }
     }
 }
@@ -380,14 +389,22 @@ pub struct StructField {
     pub ty: String,
 }
 
-pub fn generate_struct_fields(fields: &[Field]) -> (Vec<StructField>, Vec<StructField>) {
+#[derive(Debug, Clone, Serialize)]
+pub struct ChangesetField {
+    pub name: String,
+    pub ty: String,
+    pub validation: Option<String>,
+    pub faker: Option<String>,
+}
+
+pub fn generate_struct_fields(fields: &[Field]) -> (Vec<StructField>, Vec<ChangesetField>) {
     let mut struct_fields = vec![];
     let mut changeset_fields = vec![];
 
     for field in fields {
         match field {
             Field::Column(name, field_type) => {
-                let (ty, _needs_validation, _faker) = field_type.as_sqlx_type(name);
+                let ty = field_type.as_sqlx_type();
 
                 // Always include in the main struct
                 struct_fields.push(StructField {
@@ -395,24 +412,29 @@ pub fn generate_struct_fields(fields: &[Field]) -> (Vec<StructField>, Vec<Struct
                     ty: ty.clone(),
                 });
 
-                // Skip `id` field for changeset
+                // Skip `id` in changeset
                 if name != "id" {
-                    changeset_fields.push(StructField {
+                    changeset_fields.push(ChangesetField {
                         name: name.clone(),
                         ty,
+                        validation: field_type.as_validation(),
+                        faker: field_type.as_faker(),
                     });
                 }
             }
+
             Field::ForeignKey { local_key, .. } => {
-                // Foreign keys like user_id or post_id should be included in both
+                // Foreign keys are always Uuid
                 struct_fields.push(StructField {
                     name: local_key.clone(),
                     ty: "Uuid".to_string(),
                 });
 
-                changeset_fields.push(StructField {
+                changeset_fields.push(ChangesetField {
                     name: local_key.clone(),
                     ty: "Uuid".to_string(),
+                    validation: None,
+                    faker: Some("Uuid()".to_string()),
                 });
             }
         }
