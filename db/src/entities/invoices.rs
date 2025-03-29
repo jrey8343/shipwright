@@ -1,13 +1,13 @@
 #[cfg(feature = "test-helpers")]
-use fake::{faker, Dummy};
+use fake::{Dummy, faker};
 
+use crate::{Entity, Error, transaction};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::Serialize;
-use sqlx::{Sqlite, SqlitePool, FromRow};
+use sqlx::{FromRow, Sqlite, SqlitePool};
 use uuid::Uuid;
 use validator::Validate;
-use crate::{Entity, Error, transaction};
 
 /// A struct which maps the fields of an invoice with native Sqlite types.
 ///
@@ -24,7 +24,6 @@ pub struct Invoice {
     pub amount: Option<f64>,
     pub created_at: time::OffsetDateTime,
     pub updated_at: time::OffsetDateTime,
-    
 }
 
 /// A changeset representing the data that is intended to be used to either create a new invoice or update an existing invoice.
@@ -41,7 +40,6 @@ pub struct Invoice {
 pub struct InvoiceChangeset {
     #[cfg_attr(feature = "test-helpers", dummy(faker = "1.00..100.00"))]
     pub amount: Option<f64>,
-    
 }
 
 /// The Entity trait implements all basic CRUD operations for the Invoice.
@@ -61,11 +59,10 @@ impl Entity for Invoice {
     async fn load_all<'a>(
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<Vec<Invoice>, Error> {
-        let invoices = sqlx::query_as::<_, Invoice>(
-            r#"select id, amount, created_at, updated_at from invoices"#
-        )
-        .fetch_all(executor)
-        .await?;
+        let invoices: Vec<Invoice> =
+            sqlx::query_as(r#"select id, amount, created_at, updated_at from invoices"#)
+                .fetch_all(executor)
+                .await?;
 
         Ok(invoices)
     }
@@ -74,7 +71,7 @@ impl Entity for Invoice {
         id: Self::Id,
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<Invoice, Error> {
-        let invoice = sqlx::query_as::<_, Invoice>(
+        let invoice: Invoice = sqlx::query_as(
             r#"select id, amount, created_at, updated_at from invoices where id = ?"#,
         )
         .bind(id)
@@ -91,11 +88,11 @@ impl Entity for Invoice {
     ) -> Result<Invoice, Error> {
         invoice.validate()?;
 
-        let invoice = sqlx::query_as::<_, Invoice>(
-            r#"insert into invoices (amount) values (?) returning id, amount, created_at, updated_at"#,
+        let invoice: Invoice = sqlx::query_as(
+            r#"insert into invoices (id, amount) values (?, ?) returning id, amount, created_at, updated_at"#,
         )
+        .bind(Uuid::new_v4())
         .bind(invoice.amount)
-        
         .fetch_one(executor)
         .await?;
 
@@ -129,12 +126,11 @@ impl Entity for Invoice {
     ) -> Result<Invoice, Error> {
         invoice.validate()?;
 
-        let invoice = sqlx::query_as::<_, Invoice>(
+        let invoice: Invoice = sqlx::query_as(
             r#"update invoices set (amount) = (?) where id = ? returning id, amount, created_at, updated_at"#,
         )
-        .bind(id)
         .bind(invoice.amount)
-        
+        .bind(id)
         .fetch_optional(executor)
         .await?
         .ok_or(Error::NoRecordFound)?;
@@ -146,7 +142,7 @@ impl Entity for Invoice {
         id: Self::Id,
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<Invoice, Error> {
-        let invoice = sqlx::query_as::<_, Invoice>(
+        let invoice: Invoice = sqlx::query_as(
             r#"delete from invoices where id = ? returning id, amount, created_at, updated_at"#,
         )
         .bind(id)

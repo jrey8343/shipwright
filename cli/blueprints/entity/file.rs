@@ -62,7 +62,7 @@ impl Entity for {{ entity_struct_name }} {
     async fn load_all<'a>(
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<Vec<{{ entity_struct_name }}>, Error> {
-        let {{ entity_plural_name }} = sqlx::query_as::<_, {{ entity_struct_name }}>(
+        let {{ entity_plural_name }}: Vec<{{ entity_struct_name }}> = sqlx::query_as(
             r#"select {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless%}{%- endfor %} from {{ entity_plural_name }}"#
         )
         .fetch_all(executor)
@@ -75,7 +75,7 @@ impl Entity for {{ entity_struct_name }} {
         id: Self::Id,
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<{{ entity_struct_name}}, Error> {
-        let {{ entity_singular_name }} = sqlx::query_as::<_, {{ entity_struct_name }}>(
+        let {{ entity_singular_name }}: {{ entity_struct_name }} = sqlx::query_as(
             r#"select {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %} from {{ entity_plural_name }} where id = ?"#,
         )
         .bind(id)
@@ -92,12 +92,13 @@ impl Entity for {{ entity_struct_name }} {
     ) -> Result<{{ entity_struct_name }}, Error> {
         {{ entity_singular_name }}.validate()?;
 
-        let {{ entity_singular_name }} = sqlx::query_as::<_, {{ entity_struct_name }}>(
-            r#"insert into {{ entity_plural_name }} ({% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}) values ({% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}) returning {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
+        let {{ entity_singular_name }}: {{ entity_struct_name }} = sqlx::query_as(
+            r#"insert into {{ entity_plural_name }} (id, {% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}) values (?, {% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}) returning {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
         )
+        .bind(Uuid::new_v4())
         {% for field in changeset_struct_fields -%}
         .bind({{ entity_singular_name }}.{{ field.name }})
-        {% endfor %}
+        {%- endfor %}
         .fetch_one(executor)
         .await?;
 
@@ -131,13 +132,13 @@ impl Entity for {{ entity_struct_name }} {
     ) -> Result<{{ entity_struct_name }}, Error> {
         {{ entity_singular_name }}.validate()?;
 
-        let {{ entity_singular_name }} = sqlx::query_as::<_, {{ entity_struct_name }}>(
+        let {{ entity_singular_name }}: {{ entity_struct_name }} = sqlx::query_as(
             r#"update {{ entity_plural_name }} set ({% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}) = ({% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}) where id = ? returning {% for field in entity_struct_fields -%}{{field.name}}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
         )
-        .bind(id)
         {% for field in changeset_struct_fields -%}
         .bind({{ entity_singular_name }}.{{ field.name }})
-        {% endfor %}
+        {%- endfor %}
+        .bind(id)
         .fetch_optional(executor)
         .await?
         .ok_or(Error::NoRecordFound)?;
@@ -149,7 +150,7 @@ impl Entity for {{ entity_struct_name }} {
         id: Self::Id,
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<{{ entity_struct_name }}, Error> {
-        let {{ entity_singular_name }} = sqlx::query_as::<_, {{ entity_struct_name }}>(
+        let {{ entity_singular_name }}: {{ entity_struct_name }} = sqlx::query_as(
             r#"delete from {{ entity_plural_name }} where id = ? returning {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
         )
         .bind(id)

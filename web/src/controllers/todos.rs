@@ -5,9 +5,9 @@ use axum::{
     response::Redirect,
     routing::{get, post},
 };
-use shipwright_db::entities::{
-    Entity as _,
-    todo::{Todo, TodoChangeset},
+use shipwright_db::{
+    Entity,
+    entities::todo::{Todo, TodoChangeset},
 };
 use shipwright_ui::view_engine::{View, ViewEngine};
 

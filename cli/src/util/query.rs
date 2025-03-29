@@ -222,12 +222,10 @@ impl FieldType {
                 }
             }
             FieldType::Date => {
-                col.date().not_null();
+                col.date().default(Expr::cust("CURRENT_TIMESTAMP"));
             }
             FieldType::DateTime => {
-                col.date_time()
-                    .not_null()
-                    .default(Expr::cust("CURRENT_TIMESTAMP"));
+                col.date_time().default(Expr::cust("CURRENT_TIMESTAMP"));
             }
             FieldType::Json { binary, unique } => {
                 if *binary {
