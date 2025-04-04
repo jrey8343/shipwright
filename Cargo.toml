@@ -1,5 +1,5 @@
 [workspace]
-members = ['web', 'db', 'config', "mailer", "worker", "ui", "cli"]
+members = ['web', 'db', 'config', "mailer", "worker", "ui", "cli", "context"]
 resolver = '2'
 default-members = ["web"]
 

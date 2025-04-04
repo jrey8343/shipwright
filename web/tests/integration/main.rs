@@ -138,3 +138,4 @@ where
 
     callback(server).await;
 }
+mod invoice_test;

@@ -1,11 +1,11 @@
 #[cfg(feature = "test-helpers")]
-use fake::{Dummy, faker};
+use fake::Dummy;
 
 use crate::{Entity, Error, transaction};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::Serialize;
-use sqlx::{FromRow, Sqlite, SqlitePool};
+use sqlx::{FromRow, Sqlite, SqlitePool, types::time::OffsetDateTime};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -15,15 +15,20 @@ use validator::Validate;
 /// struct.
 ///
 /// ```
-/// let invoices = sqlx::query_as(r#"SELECT * FROM
-/// invoices where id = ?"#).bind(id).fetch_all(&pool).await?;
+/// let invoices = sqlx::query_as!(
+///     Invoice,
+///     r#"SELECT * FROM invoices where id = ?"#,
+///     id
+///     )
+///     .fetch_all(&pool)
+///     .await?;
 /// ```
 #[derive(Serialize, Debug, Deserialize, FromRow)]
 pub struct Invoice {
-    pub id: Uuid,
+    pub id: String,
     pub amount: Option<f64>,
-    pub created_at: time::OffsetDateTime,
-    pub updated_at: time::OffsetDateTime,
+    pub created_at: Option<OffsetDateTime>,
+    pub updated_at: Option<OffsetDateTime>,
 }
 
 /// A changeset representing the data that is intended to be used to either create a new invoice or update an existing invoice.
@@ -48,9 +53,10 @@ pub struct InvoiceChangeset {
 ///
 /// ```
 /// let invoice = Invoice::load(1, &pool).await?;
+/// ```
 #[async_trait]
 impl Entity for Invoice {
-    type Id = Uuid;
+    type Id = String;
 
     type Record<'a> = Invoice;
 
@@ -59,10 +65,12 @@ impl Entity for Invoice {
     async fn load_all<'a>(
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<Vec<Invoice>, Error> {
-        let invoices: Vec<Invoice> =
-            sqlx::query_as(r#"select id, amount, created_at, updated_at from invoices"#)
-                .fetch_all(executor)
-                .await?;
+        let invoices = sqlx::query_as!(
+            Invoice,
+            r#"select id, amount, created_at, updated_at from invoices"#
+        )
+        .fetch_all(executor)
+        .await?;
 
         Ok(invoices)
     }
@@ -71,10 +79,11 @@ impl Entity for Invoice {
         id: Self::Id,
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<Invoice, Error> {
-        let invoice: Invoice = sqlx::query_as(
+        let invoice = sqlx::query_as!(
+            Invoice,
             r#"select id, amount, created_at, updated_at from invoices where id = ?"#,
+            id
         )
-        .bind(id)
         .fetch_optional(executor)
         .await?
         .ok_or(Error::NoRecordFound)?;
@@ -88,13 +97,16 @@ impl Entity for Invoice {
     ) -> Result<Invoice, Error> {
         invoice.validate()?;
 
-        let invoice: Invoice = sqlx::query_as(
+        let id = Uuid::now_v7().to_string();
+
+        let invoice  = sqlx::query_as!(
+            Invoice,
             r#"insert into invoices (id, amount) values (?, ?) returning id, amount, created_at, updated_at"#,
-        )
-        .bind(Uuid::new_v4())
-        .bind(invoice.amount)
-        .fetch_one(executor)
-        .await?;
+            id,
+            invoice.amount
+            )
+            .fetch_one(executor)
+            .await?;
 
         Ok(invoice)
     }
@@ -126,11 +138,12 @@ impl Entity for Invoice {
     ) -> Result<Invoice, Error> {
         invoice.validate()?;
 
-        let invoice: Invoice = sqlx::query_as(
+        let invoice = sqlx::query_as!(
+            Invoice,
             r#"update invoices set (amount) = (?) where id = ? returning id, amount, created_at, updated_at"#,
+            invoice.amount,
+            id
         )
-        .bind(invoice.amount)
-        .bind(id)
         .fetch_optional(executor)
         .await?
         .ok_or(Error::NoRecordFound)?;
@@ -142,10 +155,11 @@ impl Entity for Invoice {
         id: Self::Id,
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<Invoice, Error> {
-        let invoice: Invoice = sqlx::query_as(
+        let invoice = sqlx::query_as!(
+            Invoice,
             r#"delete from invoices where id = ? returning id, amount, created_at, updated_at"#,
+            id
         )
-        .bind(id)
         .fetch_optional(executor)
         .await?
         .ok_or(Error::NoRecordFound)?;

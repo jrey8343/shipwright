@@ -1,11 +1,11 @@
 use crate::{authenticated_request, test_request_with_db};
-use {{ db_crate_name }}::{DbPool, MIGRATOR, entities::invoices::InvoiceChangeset};
 use fake::{Fake, Faker};
+use shipwright_db::{DbPool, MIGRATOR, entities::invoices::InvoiceChangeset};
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn index_page_works_for_authenticated_users(pool: DbPool) {
     authenticated_request::<_, _>(pool.clone(), |request| async move {
-        let response = request.get("/{{ entity_plural_name }}").await;
+        let response = request.get("/invoices").await;
 
         response.assert_status_ok();
     })
@@ -13,11 +13,11 @@ async fn index_page_works_for_authenticated_users(pool: DbPool) {
 }
 
 #[sqlx::test(migrator = "MIGRATOR")]
-async fn create_{{entity_singular_name}}_redirects_and_displays_in_ui(pool: DbPool) {
-    let {{ entity_singular_name}}: {{ entity_struct_name }}Changeset = Faker.fake();
+async fn create_invoice_redirects_and_displays_in_ui(pool: DbPool) {
+    let invoice: InvoiceChangeset = Faker.fake();
 
     test_request_with_db::<_, _>(pool, |request| async move {
-        let response = request.post("/{{ entity_plural_name }}").form(&{{ entity_singular_name }}).await;
+        let response = request.post("/invoices").form(&invoice).await;
 
         response.assert_status_see_other();
 
@@ -30,9 +30,8 @@ async fn create_{{entity_singular_name}}_redirects_and_displays_in_ui(pool: DbPo
             .unwrap();
 
         let response = request.get(location).await;
-        {% for field in changeset_struct_fields %}
-        response.assert_text_contains({{ entity_singular_name}}.{{ field.name }});
-        {%- endfor %}
+
+        response.assert_text_contains(invoice.amount.unwrap().to_string());
     })
     .await
 }

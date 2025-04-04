@@ -246,7 +246,14 @@ impl FieldType {
     pub fn as_sqlx_type(&self) -> String {
         match self {
             FieldType::Uuid { nullable, .. } => {
-                if *nullable { "Option<Uuid>" } else { "Uuid" }.into()
+                if *nullable {
+                    "Option<String>"
+                } else {
+                    "String"
+                }
+                .into()
+                // Todo: when postgres is implemented I can use Uuid type
+                // if *nullable { "Option<Uuid>" } else { "Uuid" }.into()
             }
             FieldType::String { nullable, .. } => if *nullable {
                 "Option<String>"
@@ -272,7 +279,7 @@ impl FieldType {
             FieldType::Boolean { nullable } => {
                 if *nullable { "Option<bool>" } else { "bool" }.into()
             }
-            FieldType::Date | FieldType::DateTime => "time::OffsetDateTime".into(),
+            FieldType::Date | FieldType::DateTime => "Option<OffsetDateTime>".into(),
             FieldType::Json { .. } => "serde_json::JsonValue".into(),
         }
     }

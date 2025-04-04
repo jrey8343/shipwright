@@ -4,7 +4,7 @@ use fake::{faker, Dummy};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::Serialize;
-use sqlx::{Sqlite, SqlitePool, FromRow};
+use sqlx::{Sqlite, SqlitePool, FromRow, types::time::OffsetDateTime};
 use uuid::Uuid;
 use validator::Validate;
 use crate::{Entity, Error, transaction};
@@ -15,8 +15,13 @@ use crate::{Entity, Error, transaction};
 /// struct.
 ///
 /// ```
-/// let {{ entity_plural_name }} = sqlx::query_as(r#"SELECT * FROM
-/// {{ entity_plural_name }} where id = ?"#).bind(id).fetch_all(&pool).await?;
+/// let {{ entity_plural_name }} = sqlx::query_as!(
+///     {{ entity_struct_name }},
+///     r#"SELECT * FROM {{ entity_plural_name }} where id = ?"#,
+///     id
+///     )
+///     .fetch_all(&pool)
+///     .await?;
 /// ```
 #[derive(Serialize, Debug, Deserialize, FromRow)]
 pub struct {{entity_struct_name}} {
@@ -51,9 +56,10 @@ pub struct {{entity_struct_name}}Changeset {
 ///
 /// ```
 /// let {{ entity_singular_name }} = {{ entity_struct_name }}::load(1, &pool).await?;
+/// ``` 
 #[async_trait]
 impl Entity for {{ entity_struct_name }} {
-    type Id = Uuid;
+    type Id = String;
 
     type Record<'a> = {{ entity_struct_name }};
 
@@ -62,7 +68,8 @@ impl Entity for {{ entity_struct_name }} {
     async fn load_all<'a>(
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<Vec<{{ entity_struct_name }}>, Error> {
-        let {{ entity_plural_name }}: Vec<{{ entity_struct_name }}> = sqlx::query_as(
+        let {{ entity_plural_name }} = sqlx::query_as!(
+            {{ entity_struct_name }},
             r#"select {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless%}{%- endfor %} from {{ entity_plural_name }}"#
         )
         .fetch_all(executor)
@@ -75,10 +82,11 @@ impl Entity for {{ entity_struct_name }} {
         id: Self::Id,
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<{{ entity_struct_name}}, Error> {
-        let {{ entity_singular_name }}: {{ entity_struct_name }} = sqlx::query_as(
+        let {{ entity_singular_name }} = sqlx::query_as!(
+            {{ entity_struct_name }},
             r#"select {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %} from {{ entity_plural_name }} where id = ?"#,
+            id
         )
-        .bind(id)
         .fetch_optional(executor)
         .await?
         .ok_or(Error::NoRecordFound)?;
@@ -92,15 +100,18 @@ impl Entity for {{ entity_struct_name }} {
     ) -> Result<{{ entity_struct_name }}, Error> {
         {{ entity_singular_name }}.validate()?;
 
-        let {{ entity_singular_name }}: {{ entity_struct_name }} = sqlx::query_as(
+        let id = Uuid::now_v7().to_string();
+
+        let {{ entity_singular_name }}  = sqlx::query_as!(
+            {{ entity_struct_name }},
             r#"insert into {{ entity_plural_name }} (id, {% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}) values (?, {% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}) returning {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
-        )
-        .bind(Uuid::new_v4())
-        {% for field in changeset_struct_fields -%}
-        .bind({{ entity_singular_name }}.{{ field.name }})
-        {%- endfor %}
-        .fetch_one(executor)
-        .await?;
+            id,
+            {% for field in changeset_struct_fields -%}
+            {{ entity_singular_name }}.{{ field.name }}{% unless forloop.last %},{% endunless %}
+            {%- endfor %}
+            )
+            .fetch_one(executor)
+            .await?;
 
         Ok({{ entity_singular_name }})
     }
@@ -132,13 +143,14 @@ impl Entity for {{ entity_struct_name }} {
     ) -> Result<{{ entity_struct_name }}, Error> {
         {{ entity_singular_name }}.validate()?;
 
-        let {{ entity_singular_name }}: {{ entity_struct_name }} = sqlx::query_as(
+        let {{ entity_singular_name }} = sqlx::query_as!(
+            {{ entity_struct_name }},
             r#"update {{ entity_plural_name }} set ({% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}) = ({% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}) where id = ? returning {% for field in entity_struct_fields -%}{{field.name}}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
+            {% for field in changeset_struct_fields -%}
+            {{ entity_singular_name }}.{{ field.name }},
+            {%- endfor %}
+            id
         )
-        {% for field in changeset_struct_fields -%}
-        .bind({{ entity_singular_name }}.{{ field.name }})
-        {%- endfor %}
-        .bind(id)
         .fetch_optional(executor)
         .await?
         .ok_or(Error::NoRecordFound)?;
@@ -150,10 +162,11 @@ impl Entity for {{ entity_struct_name }} {
         id: Self::Id,
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<{{ entity_struct_name }}, Error> {
-        let {{ entity_singular_name }}: {{ entity_struct_name }} = sqlx::query_as(
+        let {{ entity_singular_name }} = sqlx::query_as!(
+            {{ entity_struct_name }},
             r#"delete from {{ entity_plural_name }} where id = ? returning {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
+            id
         )
-        .bind(id)
         .fetch_optional(executor)
         .await?
         .ok_or(Error::NoRecordFound)?;

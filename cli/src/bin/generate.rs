@@ -63,11 +63,15 @@ enum Commands {
     Controller {
         #[arg(help = "The name of the controller.")]
         name: String,
+        #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
+        fields: Vec<String>,
     },
     #[command(about = "Generate a test for a controller")]
     ControllerTest {
         #[arg(help = "The name of the controller.")]
         name: String,
+        #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
+        fields: Vec<String>,
     },
     #[command(about = "Generate a migration")]
     Migration {
@@ -111,7 +115,7 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated middleware {}.", &file_name));
             Ok(())
         }
-        Commands::Controller { name } => {
+        Commands::Controller { name, fields } => {
             ui.info("Generating controller…");
             let file_name = generate_controller(name.clone())
                 .await
@@ -119,15 +123,15 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated controller {}.", &file_name));
             ui.info("Do not forget to route the controller's actions in ./web/src/routes.rs!");
             ui.info("Generating test for controller…");
-            let file_name = generate_controller_test(name)
+            let file_name = generate_controller_test(name, parse_cli_fields(fields)?)
                 .await
                 .wrap_err("Could not generate test for controller!")?;
             ui.success(&format!("Generated test for controller {}.", &file_name));
             Ok(())
         }
-        Commands::ControllerTest { name } => {
+        Commands::ControllerTest { name, fields } => {
             ui.info("Generating test for controller…");
-            let file_name = generate_controller_test(name)
+            let file_name = generate_controller_test(name, parse_cli_fields(fields)?)
                 .await
                 .wrap_err("Could not generate test for controller!")?;
             ui.success(&format!("Generated test for controller {}.", &file_name));
@@ -177,11 +181,12 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ));
             Ok(())
         }
-        Commands::CrudControllerTest { name } => {
+        Commands::CrudControllerTest { name, .. } => {
             ui.info("Generating test for CRUD controller…");
             let file_name = generate_crud_controller_test(name.clone())
                 .await
                 .wrap_err("Could not generate test for CRUD controller!")?;
+
             ui.success(&format!(
                 "Generated test for CRUD controller {}.",
                 &file_name
@@ -233,28 +238,38 @@ async fn generate_controller(name: String) -> Result<String, Error> {
     Ok(file_path)
 }
 
-async fn generate_controller_test(name: String) -> Result<String, Error> {
+async fn generate_controller_test(name: String, fields: Vec<Field>) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
-    let macros_crate_name = get_member_package_name("macros")?;
-    let macros_crate_name = to_snake_case(&macros_crate_name);
+    let name_plural = to_plural(&name);
+    let name_singular = to_singular(&name);
+    let struct_name = to_class_case(&name_singular);
     let web_crate_name = get_member_package_name("web")?;
     let web_crate_name = to_snake_case(&web_crate_name);
-    let has_db = has_db();
+    let db_crate_name = get_member_package_name("db")?;
 
-    let template = get_liquid_template("controller/minimal/test.rs")?;
+    let (entity_struct_fields, changeset_struct_fields) = generate_struct_fields(&fields);
+
+    let template = get_liquid_template("controller/crud/test.rs")?;
     let variables = liquid::object!({
         "name": name,
-        "macros_crate_name": macros_crate_name,
+        "entity_struct_name": struct_name,
+        "entity_singular_name": name_singular,
+        "entity_plural_name": name_plural,
         "web_crate_name": web_crate_name,
-        "has_db": has_db,
+        "db_crate_name": db_crate_name,
+        "entity_struct_fields": entity_struct_fields,
+        "changeset_struct_fields": changeset_struct_fields,
     });
     let output = template
         .render(&variables)
         .wrap_err("Failed to render Liquid template")?;
 
-    let file_path = format!("./web/tests/api/{name}_test.rs");
+    let file_path = format!("./web/tests/integration/{name}_test.rs");
     create_project_file(&file_path, output.as_bytes())?;
-    append_to_project_file("./web/tests/api/main.rs", &format!("mod {name}_test;"))?;
+    append_to_project_file(
+        "./web/tests/integration/main.rs",
+        &format!("mod {name}_test;"),
+    )?;
 
     Ok(file_path)
 }
@@ -379,8 +394,6 @@ async fn generate_crud_controller_test(name: String) -> Result<String, Error> {
     let struct_name = to_class_case(&name_singular);
     let db_crate_name = get_member_package_name("db")?;
     let db_crate_name = to_snake_case(&db_crate_name);
-    let macros_crate_name = get_member_package_name("macros")?;
-    let macros_crate_name = to_snake_case(&macros_crate_name);
     let web_crate_name = get_member_package_name("web")?;
     let web_crate_name = to_snake_case(&web_crate_name);
 
@@ -390,16 +403,18 @@ async fn generate_crud_controller_test(name: String) -> Result<String, Error> {
         "entity_singular_name": name_singular,
         "entity_plural_name": name_plural,
         "db_crate_name": db_crate_name,
-        "macros_crate_name": macros_crate_name,
         "web_crate_name": web_crate_name,
     });
     let output = template
         .render(&variables)
         .wrap_err("Failed to render Liquid template")?;
 
-    let file_path = format!("./web/tests/api/{name}_test.rs");
+    let file_path = format!("./web/tests/integration/{name}_test.rs");
     create_project_file(&file_path, output.as_bytes())?;
-    append_to_project_file("./web/tests/api/main.rs", &format!("mod {name}_test;"))?;
+    append_to_project_file(
+        "./web/tests/integration/main.rs",
+        &format!("mod {name}_test;"),
+    )?;
 
     Ok(file_path)
 }
