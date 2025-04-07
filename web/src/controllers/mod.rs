@@ -108,3 +108,4 @@ pub trait Controller {
         State(app_state): State<AppState>,
     ) -> Result<(Flash, Redirect), Self::Error>;
 }
+pub mod invoice;

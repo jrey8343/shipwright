@@ -1,6 +1,6 @@
 use crate::{authenticated_request, test_request_with_db};
-use fake::{Fake, Faker};
 use shipwright_db::{DbPool, MIGRATOR, entities::invoices::InvoiceChangeset};
+use fake::{Fake, Faker};
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn index_page_works_for_authenticated_users(pool: DbPool) {
@@ -30,8 +30,8 @@ async fn create_invoice_redirects_and_displays_in_ui(pool: DbPool) {
             .unwrap();
 
         let response = request.get(location).await;
-
-        response.assert_text_contains(invoice.amount.unwrap().to_string());
+        
+        response.assert_text_contains(invoice.amount);
     })
     .await
 }

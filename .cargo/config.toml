@@ -6,4 +6,4 @@ rustflags = ["-C", "link-arg=-fuse-ld=/opt/homebrew/opt/lld/bin/ld64.lld"]
 
 [alias]
 db = ["run", "--package", "shipwright_cli", "--bin", "db", "--"]
-generate = ["run", "--package", "shipwright_cli", "--bin", "generate", "--"]
+gen = ["run", "--package", "shipwright_cli", "--bin", "generate", "--"]

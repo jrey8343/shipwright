@@ -33,7 +33,6 @@ impl App {
             deletion_task,
             auth_layer,
         } = AuthSessionManager::new(&app_state);
-
         //TODO: put initializer logic into a function that loops through a vec of initializers
         //which impl Initializer trait
 

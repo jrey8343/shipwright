@@ -92,16 +92,6 @@ enum Commands {
         #[arg(help = "The name of the entity the test helper is for.")]
         name: String,
     },
-    #[command(about = "Generate:web an example CRUD controller")]
-    CrudController {
-        #[arg(help = "The name of the entity the controller is for.")]
-        name: String,
-    },
-    #[command(about = "Generate a test for a CRUD controller")]
-    CrudControllerTest {
-        #[arg(help = "The name of the entity the controller is for.")]
-        name: String,
-    },
 }
 
 #[allow(missing_docs)]
@@ -165,35 +155,7 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ));
             Ok(())
         }
-        Commands::CrudController { name } => {
-            ui.info("Generating CRUD controller…");
-            let file_name = generate_crud_controller(name.clone())
-                .await
-                .wrap_err("Could not generate CRUD controller!")?;
-            ui.success(&format!("Generated CRUD controller {}.", &file_name));
-            ui.info("Do not forget to route the controller's actions in ./web/src/routes.rs!");
-            let file_name = generate_crud_controller_test(name.clone())
-                .await
-                .wrap_err("Could not generate test for CRUD controller!")?;
-            ui.success(&format!(
-                "Generated test for CRUD controller {}.",
-                &file_name
-            ));
-            Ok(())
-        }
-        Commands::CrudControllerTest { name, .. } => {
-            ui.info("Generating test for CRUD controller…");
-            let file_name = generate_crud_controller_test(name.clone())
-                .await
-                .wrap_err("Could not generate test for CRUD controller!")?;
-
-            ui.success(&format!(
-                "Generated test for CRUD controller {}.",
-                &file_name
-            ));
-            Ok(())
-        }
-    }
+          }
 }
 
 async fn generate_middleware(name: String) -> Result<String, Error> {
@@ -217,12 +179,21 @@ async fn generate_middleware(name: String) -> Result<String, Error> {
     Ok(file_path)
 }
 
+
 async fn generate_controller(name: String) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
+    let name_plural = to_plural(&name);
+    let name_singular = to_singular(&name);
+    let struct_name = to_class_case(&name_singular);
+    let db_crate_name = get_member_package_name("db")?;
+    let db_crate_name = to_snake_case(&db_crate_name);
 
-    let template = get_liquid_template("controller/minimal/controller.rs")?;
+    let template = get_liquid_template("controller/file.rs")?;
     let variables = liquid::object!({
-        "name": name,
+        "entity_struct_name": struct_name,
+        "entity_singular_name": name_singular,
+        "entity_plural_name": name_plural,
+        "db_crate_name": db_crate_name,
     });
     let output = template
         .render(&variables)
@@ -249,7 +220,7 @@ async fn generate_controller_test(name: String, fields: Vec<Field>) -> Result<St
 
     let (entity_struct_fields, changeset_struct_fields) = generate_struct_fields(&fields);
 
-    let template = get_liquid_template("controller/crud/test.rs")?;
+    let template = get_liquid_template("controller/test.rs")?;
     let variables = liquid::object!({
         "name": name,
         "entity_struct_name": struct_name,
@@ -355,69 +326,8 @@ async fn generate_entity_test_helper(name: String) -> Result<String, Error> {
     Ok(struct_name)
 }
 
-async fn generate_crud_controller(name: String) -> Result<String, Error> {
-    let name = to_snake_case(&name).to_lowercase();
-    let name_plural = to_plural(&name);
-    let name_singular = to_singular(&name);
-    let struct_name = to_class_case(&name_singular);
-    let db_crate_name = get_member_package_name("db")?;
-    let db_crate_name = to_snake_case(&db_crate_name);
-    let macros_crate_name = get_member_package_name("macros")?;
-    let macros_crate_name = to_snake_case(&macros_crate_name);
 
-    let template = get_liquid_template("controller/crud/controller.rs")?;
-    let variables = liquid::object!({
-        "entity_struct_name": struct_name,
-        "entity_singular_name": name_singular,
-        "entity_plural_name": name_plural,
-        "db_crate_name": db_crate_name,
-        "macros_crate_name": macros_crate_name
-    });
-    let output = template
-        .render(&variables)
-        .wrap_err("Failed to render Liquid template")?;
 
-    let file_path = format!("./web/src/controllers/{}.rs", name);
-    create_project_file(&file_path, output.as_bytes())?;
-    append_to_project_file(
-        "./web/src/controllers/mod.rs",
-        &format!("pub mod {};", name),
-    )?;
-
-    Ok(file_path)
-}
-
-async fn generate_crud_controller_test(name: String) -> Result<String, Error> {
-    let name = to_snake_case(&name).to_lowercase();
-    let name_plural = to_plural(&name);
-    let name_singular = to_singular(&name);
-    let struct_name = to_class_case(&name_singular);
-    let db_crate_name = get_member_package_name("db")?;
-    let db_crate_name = to_snake_case(&db_crate_name);
-    let web_crate_name = get_member_package_name("web")?;
-    let web_crate_name = to_snake_case(&web_crate_name);
-
-    let template = get_liquid_template("controller/crud/test.rs")?;
-    let variables = liquid::object!({
-        "entity_struct_name": struct_name,
-        "entity_singular_name": name_singular,
-        "entity_plural_name": name_plural,
-        "db_crate_name": db_crate_name,
-        "web_crate_name": web_crate_name,
-    });
-    let output = template
-        .render(&variables)
-        .wrap_err("Failed to render Liquid template")?;
-
-    let file_path = format!("./web/tests/integration/{name}_test.rs");
-    create_project_file(&file_path, output.as_bytes())?;
-    append_to_project_file(
-        "./web/tests/integration/main.rs",
-        &format!("mod {name}_test;"),
-    )?;
-
-    Ok(file_path)
-}
 
 fn get_liquid_template(path: &str) -> Result<Template, Error> {
     let blueprint = BLUEPRINTS_DIR
@@ -464,10 +374,6 @@ fn append_to_project_file(path: &str, contents: &str) -> Result<(), Error> {
     writeln!(file, "{}", contents).wrap_err(format!(r#"Failed to append to file "{}"!"#, path))?;
 
     Ok(())
-}
-
-fn has_db() -> bool {
-    get_member_package_name("db").is_ok()
 }
 
 fn get_member_package_name(path: &str) -> Result<String, Error> {
