@@ -1,0 +1,8 @@
+<form hx-put="/invoices/{{ {{ entity_singular_name }}.id }}" hx-target="body">
+    <label>
+        Description:
+        <input type="text" name="description"
+            value="{{ {{ entity_singular_name }}.description }}" />
+    </label>
+    <button type="submit">Update Invoice</button>
+</form>

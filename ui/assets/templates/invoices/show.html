@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Show{% endblock %}
+{% block content %}
+<span id="errors"></span>
+{% for flash in flashes %}<p>{{ flash.message }}</p>{% endfor %}
+<h1>Invoice: {{ {{ entity_singular_name }}.id }}</h1>
+{% block update %}
+{% include "{{ entity_plural_name }}/update.html" %}
+{% endblock %}
+{% endblock %}

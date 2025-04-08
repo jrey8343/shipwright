@@ -92,6 +92,11 @@ enum Commands {
         #[arg(help = "The name of the entity the test helper is for.")]
         name: String,
     },
+    #[command(about = "Generate a view")]
+    View {
+        #[arg(help = "The name of the view.")]
+        name: String,
+    },
 }
 
 #[allow(missing_docs)]
@@ -155,8 +160,17 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ));
             Ok(())
         }
-          }
+        Commands::View { name } => {
+            ui.info("Generating view…");
+            let file_name = generate_view(name)
+                .await
+                .wrap_err("Could not generate view!")?;
+            ui.success(&format!("Generated view {}.", &file_name));
+            Ok(())
+        }
+    }
 }
+
 
 async fn generate_middleware(name: String) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
@@ -326,8 +340,70 @@ async fn generate_entity_test_helper(name: String) -> Result<String, Error> {
     Ok(struct_name)
 }
 
+async fn generate_view(name: String) -> Result<String, Error> {
+    let name = to_snake_case(&name).to_lowercase();
+    let name_plural = to_plural(&name);
+    let name_singular = to_singular(&name);
+    let struct_name = to_class_case(&name_singular);
+    let db_crate_name = get_member_package_name("db")?;
+    let db_crate_name = to_snake_case(&db_crate_name);
 
+    let variables = liquid::object!({
+        "entity_struct_name": struct_name,
+        "entity_singular_name": name_singular,
+        "entity_plural_name": name_plural,
+        "db_crate_name": db_crate_name,
+    });
 
+    // Generate Rust view file
+    let template = get_liquid_template("view/file.rs")?;
+    let output = template
+        .render(&variables)
+        .wrap_err("Failed to render Liquid template")?;
+
+    let file_path = format!("./web/src/views/{}.rs", name_plural);
+    create_project_file(&file_path, output.as_bytes())?;
+    append_to_project_file(
+        "./web/src/views/mod.rs",
+        &format!("pub mod {};", name_plural),
+    )?;
+
+    // Create templates directory if it doesn't exist
+    let templates_dir = format!("./ui/assets/templates/{}", name_plural);
+    fs::create_dir_all(&templates_dir).wrap_err("Failed to create templates directory")?;
+
+    // Generate index.html template
+    let index_template = get_liquid_template("view/templates/index.html")?;
+    let index_output = index_template
+        .render(&variables)
+        .wrap_err("Failed to render index template")?;
+    create_project_file(
+        &format!("{}/index.html", templates_dir),
+        index_output.as_bytes(),
+    )?;
+
+    // Generate show.html template
+    let show_template = get_liquid_template("view/templates/show.html")?;
+    let show_output = show_template
+        .render(&variables)
+        .wrap_err("Failed to render show template")?;
+    create_project_file(
+        &format!("{}/show.html", templates_dir),
+        show_output.as_bytes(),
+    )?;
+
+    // Generate update.html template
+    let update_template = get_liquid_template("view/templates/update.html")?;
+    let update_output = update_template
+        .render(&variables)
+        .wrap_err("Failed to render update template")?;
+    create_project_file(
+        &format!("{}/update.html", templates_dir),
+        update_output.as_bytes(),
+    )?;
+
+    Ok(file_path)
+}
 
 fn get_liquid_template(path: &str) -> Result<Template, Error> {
     let blueprint = BLUEPRINTS_DIR

@@ -25,7 +25,7 @@ pub struct InvoiceController;
 
 #[async_trait]
 impl Controller for InvoiceController {
-    type Id = i64;
+    type Id = String;
 
     type View = InvoiceView;
 

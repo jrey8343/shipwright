@@ -1,0 +1,10 @@
+{% raw %}{% extends "base.html" %}
+{% block title %}Show{% endblock %}
+{% block content %}{% endraw %}
+<span id="errors"></span>
+{% raw %}{% for flash in flashes %}<p>{{ flash.message }}</p>{% endfor %}{% endraw %}
+<h1>{{ entity_singular_name | capitalize }}: {% raw %}{{ {{ entity_singular_name }}.id }}{% endraw %}</h1>
+{% raw %}{% block update %}
+{% include "{{ entity_plural_name }}/update.html" %}
+{% endblock %}
+{% endblock %}{% endraw %}

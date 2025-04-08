@@ -1,0 +1,25 @@
+{% raw %}{% extends "base.html" %}
+{% block title %}{% endraw %}{{ entity_plural_name | capitalize }}{% raw %}{% endblock %}
+{% block content %}{% endraw %}
+<h1>Your {{ entity_plural_name | capitalize }}</h1>
+<ul>
+    {% raw %}{% for {{ entity_singular_name }} in {{ entity_plural_name }} %}{% endraw %}
+    <li>
+        <a href="/{{ entity_plural_name }}/{% raw %}{{ {{ entity_singular_name }}.id }}{% endraw %}">{% raw %}{{ {{
+            entity_singular_name }}.description }}{% endraw %}</a>
+        <button hx-delete="/{{ entity_plural_name }}/{% raw %}{{ {{ entity_singular_name }}.id }}{% endraw %}"
+            hx-swap="delete" hx-target="closest li">X</button>
+    </li>
+    {% raw %}{% endfor %}{% endraw %}
+</ul>
+<h2>Add a {{ entity_singular_name | capitalize }}</h2>
+<form hx-post="/{{ entity_plural_name }}" hx-target="body" hx-target-errors="#errors">
+    <label>
+        Description:
+        <input type="text" name="description" />
+        <span id="description-errors"></span>
+        <button type="submit">Add {{ entity_singular_name | capitalize }}</button>
+    </label>
+</form>
+<span id="errors"></span>
+{% raw %}{% endblock %}{% endraw %}
