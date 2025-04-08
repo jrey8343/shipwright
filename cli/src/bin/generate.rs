@@ -87,15 +87,19 @@ enum Commands {
         #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
         fields: Vec<String>,
     },
-    #[command(about = "Generate an entity test helper")]
-    EntityTestHelper {
-        #[arg(help = "The name of the entity the test helper is for.")]
-        name: String,
-    },
     #[command(about = "Generate a view")]
     View {
         #[arg(help = "The name of the view.")]
         name: String,
+    },
+    #[command(
+        about = "Generate a complete scaffold (migration, entity, controller, test, and view)"
+    )]
+    Scaffold {
+        #[arg(help = "The name of the resource.")]
+        name: String,
+        #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
+        fields: Vec<String>,
     },
 }
 
@@ -149,17 +153,6 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated entity {}.", &struct_name));
             Ok(())
         }
-        Commands::EntityTestHelper { name } => {
-            ui.info("Generating entity test helper…");
-            let struct_name = generate_entity_test_helper(name)
-                .await
-                .wrap_err("Could not generate entity test helper!")?;
-            ui.success(&format!(
-                "Generated test helper for entity {}.",
-                &struct_name
-            ));
-            Ok(())
-        }
         Commands::View { name } => {
             ui.info("Generating view…");
             let file_name = generate_view(name)
@@ -168,9 +161,54 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated view {}.", &file_name));
             Ok(())
         }
+        Commands::Scaffold { name, fields } => {
+            let parsed_fields = parse_cli_fields(fields)?;
+            let name_snake = to_snake_case(&name).to_lowercase();
+            let name_plural = to_plural(&name_snake);
+
+            // Generate migration
+            ui.info("Generating migration…");
+            let migration_name = format!("create_{}_table", name_plural);
+            let file_name =
+                generate_migration(migration_name, name_snake.clone(), parsed_fields.clone())
+                    .await
+                    .wrap_err("Could not generate migration!")?;
+            ui.success(&format!("Generated migration {}.", &file_name));
+
+            // Generate entity
+            ui.info("Generating entity…");
+            let struct_name = generate_entity(name.clone(), parsed_fields.clone())
+                .await
+                .wrap_err("Could not generate entity!")?;
+            ui.success(&format!("Generated entity {}.", &struct_name));
+
+            // Generate controller
+            ui.info("Generating controller…");
+            let file_name = generate_controller(name.clone())
+                .await
+                .wrap_err("Could not generate controller!")?;
+            ui.success(&format!("Generated controller {}.", &file_name));
+            ui.info("Do not forget to route the controller's actions in ./web/src/routes.rs!");
+
+            // Generate controller test
+            ui.info("Generating test for controller…");
+            let file_name = generate_controller_test(name.clone(), parsed_fields.clone())
+                .await
+                .wrap_err("Could not generate test for controller!")?;
+            ui.success(&format!("Generated test for controller {}.", &file_name));
+
+            // Generate view
+            ui.info("Generating view…");
+            let file_name = generate_view(name.clone())
+                .await
+                .wrap_err("Could not generate view!")?;
+            ui.success(&format!("Generated view {}.", &file_name));
+
+            ui.success(&format!("Successfully scaffolded resource '{}'!", name));
+            Ok(())
+        }
     }
 }
-
 
 async fn generate_middleware(name: String) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
@@ -192,7 +230,6 @@ async fn generate_middleware(name: String) -> Result<String, Error> {
 
     Ok(file_path)
 }
-
 
 async fn generate_controller(name: String) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
@@ -308,32 +345,6 @@ async fn generate_entity(name: String, fields: Vec<Field>) -> Result<String, Err
     create_project_file(&file_path, output.as_bytes())?;
     append_to_project_file(
         "./db/src/entities/mod.rs",
-        &format!("pub mod {};", name_plural),
-    )?;
-
-    Ok(struct_name)
-}
-async fn generate_entity_test_helper(name: String) -> Result<String, Error> {
-    let name = to_singular(&name).to_lowercase();
-    let name_plural = to_plural(&name);
-    let struct_name = to_class_case(&name);
-
-    let template = get_liquid_template("entity-test-helper/file.rs")?;
-    let variables = liquid::object!({
-        "entity_struct_name": struct_name,
-        "entity_singular_name": name,
-        "entity_plural_name": name_plural,
-    });
-    let output = template
-        .render(&variables)
-        .wrap_err("Failed to render Liquid template")?;
-
-    create_project_file(
-        &format!("./db/src/test_helpers/{}.rs", name_plural),
-        output.as_bytes(),
-    )?;
-    append_to_project_file(
-        "./db/src/test_helpers/mod.rs",
         &format!("pub mod {};", name_plural),
     )?;
 

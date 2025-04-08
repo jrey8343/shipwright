@@ -25,7 +25,7 @@ pub struct {{ entity_struct_name }}Controller;
 
 #[async_trait]
 impl Controller for {{ entity_struct_name }}Controller {
-    type Id = i64;
+    type Id = String;
 
     type View = {{ entity_struct_name }}View;
 

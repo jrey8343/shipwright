@@ -109,3 +109,4 @@ pub trait Controller {
     ) -> Result<(Flash, Redirect), Self::Error>;
 }
 pub mod invoice;
+pub mod lion;

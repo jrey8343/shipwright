@@ -17,6 +17,7 @@ pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../db/migrations"
 
 /// Entity definitions and related general queries.
 pub mod entities;
+pub mod test_helpers;
 
 #[derive(Default)]
 pub enum Database {

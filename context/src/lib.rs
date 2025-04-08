@@ -1,14 +1,3 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+pub mod account;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn add_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use account::Account;

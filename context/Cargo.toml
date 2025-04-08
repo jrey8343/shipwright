@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+argon2 = "0.5"
+password-hash = "0.5"
+rand = "0.8"
+shipwright_db = { path = "../db" }
+validator = "0.16"

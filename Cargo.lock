@@ -2118,6 +2118,16 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "idna"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d20d6b07bfbc108882d88ed8e37d39636dcc260e15e30c45e6ba089610b917c"
+dependencies = [
+ "unicode-bidi",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "idna"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "686f825264d630750a544639377bae737628043f20d38bbc029e8f29ea968a7e"
@@ -3812,6 +3822,13 @@ dependencies = [
 [[package]]
 name = "shipwright_context"
 version = "0.1.0"
+dependencies = [
+ "argon2",
+ "password-hash",
+ "rand 0.8.5",
+ "shipwright_db",
+ "validator 0.16.1",
+]
 
 [[package]]
 name = "shipwright_db"
@@ -3830,7 +3847,7 @@ dependencies = [
  "thiserror 2.0.12",
  "time",
  "uuid",
- "validator",
+ "validator 0.20.0",
 ]
 
 [[package]]
@@ -3845,7 +3862,7 @@ dependencies = [
  "shipwright_config",
  "thiserror 2.0.12",
  "tokio",
- "validator",
+ "validator 0.20.0",
  "wiremock",
 ]
 
@@ -4929,7 +4946,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32f8b686cadd1473f4bd0117a5d28d36b1ade384ea9b5069a1c40aefed7fda60"
 dependencies = [
  "form_urlencoded",
- "idna",
+ "idna 1.0.3",
  "percent-encoding",
 ]
 
@@ -4978,11 +4995,26 @@ dependencies = [
 
 [[package]]
 name = "validator"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b92f40481c04ff1f4f61f304d61793c7b56ff76ac1469f1beb199b1445b253bd"
+dependencies = [
+ "idna 0.4.0",
+ "lazy_static",
+ "regex",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "validator"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43fb22e1a008ece370ce08a3e9e4447a910e92621bb49b85d6e48a45397e7cfa"
 dependencies = [
- "idna",
+ "idna 1.0.3",
  "once_cell",
  "regex",
  "serde",

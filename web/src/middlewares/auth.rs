@@ -63,7 +63,7 @@ impl AuthnBackend for AuthBackend {
 }
 
 /// ------------------------------------------------------------------------
-/// A canvenience struct to build and manage the authentication session.
+/// A convenience struct to build and manage the authentication session.
 /// ------------------------------------------------------------------------
 /// # Returns
 ///

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Lions{% endblock %}
+{% block content %}
+<h1>Your Lions</h1>
+<ul>
+    {% for {{ entity_singular_name }} in {{ entity_plural_name }} %}
+    <li>
+        <a href="/lions/{{ {{ entity_singular_name }}.id }}">{{ {{
+            entity_singular_name }}.description }}</a>
+        <button hx-delete="/lions/{{ {{ entity_singular_name }}.id }}"
+            hx-swap="delete" hx-target="closest li">X</button>
+    </li>
+    {% endfor %}
+</ul>
+<h2>Add a Lion</h2>
+<form hx-post="/lions" hx-target="body" hx-target-errors="#errors">
+    <label>
+        Description:
+        <input type="text" name="description" />
+        <span id="description-errors"></span>
+        <button type="submit">Add Lion</button>
+    </label>
+</form>
+<span id="errors"></span>
+{% endblock %}
