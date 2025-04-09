@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use axum::{Extension, Router, routing::get};
 use axum_login::{AuthManagerLayer, login_required};
+use serde::Serialize;
 use shipwright_db::DeserializeOwned;
 use shipwright_worker::WorkerStorage;
-use serde::Serialize;
 use tower::ServiceBuilder;
 use tower_http::{timeout::TimeoutLayer, trace::TraceLayer};
 use tower_sessions_sqlx_store::SqliteStore;
@@ -17,6 +17,8 @@ use crate::{
             register_confirm::RegisterConfirmController,
         },
         home::HomeController,
+        invoice::InvoiceController,
+        lion::LionController,
         ping::PingController,
         todos::TodoController,
     },
@@ -44,6 +46,8 @@ where
         .merge(LogoutController::router())
         .merge(RegisterController::router())
         .merge(RegisterConfirmController::router())
+        .merge(LionController::router())
+        .merge(InvoiceController::router())
         .merge(PingController::router())
         .with_state(app_state.clone())
         .layer(ServiceBuilder::new().layer((

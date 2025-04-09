@@ -1,5 +1,5 @@
 use crate::{authenticated_request, test_request_with_db};
-use shipwright_db::{DbPool, MIGRATOR, entities::invoices::InvoiceChangeset};
+use shipwright_db::{DbPool, MIGRATOR, entities::lions::LionChangeset};
 use fake::{Fake, Faker};
 
 #[sqlx::test(migrator = "MIGRATOR")]

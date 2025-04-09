@@ -138,7 +138,8 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
         }
         Commands::Migration { table, fields } => {
             ui.info("Generating migration…");
-            let migration_name = format!("create_{}_table", to_plural(&to_snake_case(&table)));
+            let table_name = to_plural(&table);
+            let migration_name = format!("create_{}_table", table_name);
             let file_name = generate_migration(migration_name, table, parse_cli_fields(fields)?)
                 .await
                 .wrap_err("Could not generate migration!")?;
@@ -301,7 +302,8 @@ async fn generate_migration(
     table: String,
     fields: Vec<Field>,
 ) -> Result<String, Error> {
-    let generated_sql = generate_sql(&table, fields).await?;
+    let table_name = to_plural(&table);
+    let generated_sql = generate_sql(&table_name, fields).await?;
 
     let template = get_liquid_template("migration/file.sql")?;
 

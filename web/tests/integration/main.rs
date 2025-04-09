@@ -1,6 +1,3 @@
-mod login_test;
-mod todos_test;
-
 use std::sync::OnceLock;
 
 use axum_test::{TestServer, TestServerBuilder};
@@ -138,7 +135,8 @@ where
 
     callback(server).await;
 }
+
 mod invoice_test;
-mod invoice_test;
-mod invoice_test;
+mod login_test;
+mod todos_test;
 mod lion_test;

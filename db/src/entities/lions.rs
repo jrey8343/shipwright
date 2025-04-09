@@ -1,13 +1,13 @@
 #[cfg(feature = "test-helpers")]
-use fake::{faker, Dummy};
+use fake::{Dummy, faker};
 
+use crate::{Entity, Error, transaction};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::Serialize;
-use sqlx::{Sqlite, SqlitePool, FromRow, types::time::OffsetDateTime};
+use sqlx::{FromRow, Sqlite, SqlitePool, types::time::OffsetDateTime};
 use uuid::Uuid;
 use validator::Validate;
-use crate::{Entity, Error, transaction};
 
 /// A struct which maps the fields of an lion with native Sqlite types.
 ///
@@ -25,10 +25,9 @@ use crate::{Entity, Error, transaction};
 /// ```
 #[derive(Serialize, Debug, Deserialize, FromRow)]
 pub struct Lion {
-    pub id: Option<String>,
+    pub id: String,
     pub name: String,
     pub email: String,
-    
 }
 
 /// A changeset representing the data that is intended to be used to either create a new lion or update an existing lion.
@@ -47,7 +46,6 @@ pub struct LionChangeset {
     pub name: String,
     #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::name::en::Name()"))]
     pub email: String,
-    
 }
 
 /// The Entity trait implements all basic CRUD operations for the Lion.
@@ -56,7 +54,7 @@ pub struct LionChangeset {
 ///
 /// ```
 /// let lion = Lion::load(1, &pool).await?;
-/// ``` 
+/// ```
 #[async_trait]
 impl Entity for Lion {
     type Id = String;
@@ -68,12 +66,9 @@ impl Entity for Lion {
     async fn load_all<'a>(
         executor: impl sqlx::Executor<'_, Database = Sqlite>,
     ) -> Result<Vec<Lion>, Error> {
-        let lions = sqlx::query_as!(
-            Lion,
-            r#"select id, name, email from lions"#
-        )
-        .fetch_all(executor)
-        .await?;
+        let lions = sqlx::query_as!(Lion, r#"select id, name, email from lions"#)
+            .fetch_all(executor)
+            .await?;
 
         Ok(lions)
     }
@@ -102,14 +97,15 @@ impl Entity for Lion {
 
         let id = Uuid::now_v7().to_string();
 
-        let lion  = sqlx::query_as!(
+        let lion = sqlx::query_as!(
             Lion,
             r#"insert into lions (id, name, email) values (?, ?, ?) returning id, name, email"#,
             id,
-            lion.name,lion.email
-            )
-            .fetch_one(executor)
-            .await?;
+            lion.name,
+            lion.email
+        )
+        .fetch_one(executor)
+        .await?;
 
         Ok(lion)
     }
@@ -144,7 +140,8 @@ impl Entity for Lion {
         let lion = sqlx::query_as!(
             Lion,
             r#"update lions set (name, email) = (?, ?) where id = ? returning id, name, email"#,
-            lion.name,lion.email,
+            lion.name,
+            lion.email,
             id
         )
         .fetch_optional(executor)

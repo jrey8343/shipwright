@@ -1,8 +1,9 @@
-<form hx-put="/lions/{{ {{ entity_singular_name }}.id }}" hx-target="body">
+<form hx-put="/lions/{{ lion.id }}"
+    hx-target="body">
     <label>
         Description:
         <input type="text" name="description"
-            value="{{ {{ entity_singular_name }}.description }}" />
+            value="{{ lion.description }}" />
     </label>
     <button type="submit">Update Lion</button>
 </form>

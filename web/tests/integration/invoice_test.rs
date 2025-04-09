@@ -31,7 +31,7 @@ async fn create_invoice_redirects_and_displays_in_ui(pool: DbPool) {
 
         let response = request.get(location).await;
         
-        response.assert_text_contains(invoice.amount);
+        response.assert_text_contains(invoice.amount.unwrap().to_string());
     })
     .await
 }

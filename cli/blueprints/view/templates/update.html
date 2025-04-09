@@ -1,8 +1,9 @@
-<form hx-put="/{{ entity_plural_name }}/{% raw %}{{ {{ entity_singular_name }}.id }}{% endraw %}" hx-target="body">
+<form hx-put="/{{ entity_plural_name }}/{% raw %}{{ {% endraw %}{{ entity_singular_name }}{% raw %}.id }}{% endraw %}"
+    hx-target="body">
     <label>
         Description:
         <input type="text" name="description"
-            value="{% raw %}{{ {{ entity_singular_name }}.description }}{% endraw %}" />
+            value="{% raw %}{{ {% endraw %}{{ entity_singular_name }}{% raw %}.description }}{% endraw %}" />
     </label>
     <button type="submit">Update {{ entity_singular_name | capitalize }}</button>
 </form>

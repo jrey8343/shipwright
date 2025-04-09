@@ -1,5 +1,5 @@
 use crate::{authenticated_request, test_request_with_db};
-use {{ db_crate_name }}::{DbPool, MIGRATOR, entities::invoices::InvoiceChangeset};
+use {{ db_crate_name }}::{DbPool, MIGRATOR, entities::{{ entity_plural_name}}::{{ entity_struct_name }}Changeset};
 use fake::{Fake, Faker};
 
 #[sqlx::test(migrator = "MIGRATOR")]

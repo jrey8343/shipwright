@@ -3,8 +3,8 @@ use argon2::{
     password_hash::{self, SaltString, rand_core::OsRng},
 };
 use shipwright_db::{
-    entities::user::{User, UserCredentials, UserStatus},
     Error as DbError,
+    entities::user::{User, UserCredentials, UserStatus},
 };
 
 /// The Account context handles all business logic related to user accounts,
@@ -27,9 +27,7 @@ impl Account {
     /// Validates user credentials against a user record.
     pub fn validate_credentials(user: &User, credentials: &UserCredentials) -> Result<(), DbError> {
         if user.status != UserStatus::Confirmed {
-            return Err(DbError::ValidationError(
-                validator::ValidationErrors::new(),
-            ));
+            return Err(DbError::ValidationError(validator::ValidationErrors::new()));
         }
 
         let argon2 = Argon2::default();
@@ -47,4 +45,4 @@ impl Account {
     pub fn validate_registration(credentials: &UserCredentials) -> Result<(), DbError> {
         credentials.validate().map_err(DbError::ValidationError)
     }
-} 
+}

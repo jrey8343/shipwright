@@ -3,11 +3,13 @@
 {% block content %}
 <h1>Your Lions</h1>
 <ul>
-    {% for {{ entity_singular_name }} in {{ entity_plural_name }} %}
+    {% for lion in lions %}
     <li>
-        <a href="/lions/{{ {{ entity_singular_name }}.id }}">{{ {{
-            entity_singular_name }}.description }}</a>
-        <button hx-delete="/lions/{{ {{ entity_singular_name }}.id }}"
+        <a
+            href="/lions/{{ lion.id }}">{{
+            lion.description }}</a>
+        <button
+            hx-delete="/lions/{{ lion.id }}"
             hx-swap="delete" hx-target="closest li">X</button>
     </li>
     {% endfor %}

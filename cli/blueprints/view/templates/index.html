@@ -3,14 +3,16 @@
 {% block content %}{% endraw %}
 <h1>Your {{ entity_plural_name | capitalize }}</h1>
 <ul>
-    {% raw %}{% for {{ entity_singular_name }} in {{ entity_plural_name }} %}{% endraw %}
+    {% raw %}{% for {% endraw %}{{ entity_singular_name }}{% raw %} in {% endraw %}{{ entity_plural_name }}{% raw %} %}
     <li>
-        <a href="/{{ entity_plural_name }}/{% raw %}{{ {{ entity_singular_name }}.id }}{% endraw %}">{% raw %}{{ {{
-            entity_singular_name }}.description }}{% endraw %}</a>
-        <button hx-delete="/{{ entity_plural_name }}/{% raw %}{{ {{ entity_singular_name }}.id }}{% endraw %}"
+        <a
+            href="/{% endraw %}{{ entity_plural_name }}{% raw %}/{{ {% endraw %}{{ entity_singular_name }}{% raw %}.id }}">{{
+            {% endraw %}{{ entity_singular_name }}{% raw %}.description }}</a>
+        <button
+            hx-delete="/{% endraw %}{{ entity_plural_name }}{% raw %}/{{ {% endraw %}{{ entity_singular_name }}{% raw %}.id }}"
             hx-swap="delete" hx-target="closest li">X</button>
     </li>
-    {% raw %}{% endfor %}{% endraw %}
+    {% endfor %}{% endraw %}
 </ul>
 <h2>Add a {{ entity_singular_name | capitalize }}</h2>
 <form hx-post="/{{ entity_plural_name }}" hx-target="body" hx-target-errors="#errors">

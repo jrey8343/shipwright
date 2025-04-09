@@ -5,7 +5,11 @@ use axum::{
     response::Redirect,
     routing::{get, post},
 };
-use shipwright_db::{Entity, entities::lions::Lion, entities::lions::LionChangeset};
+use shipwright_db::{
+    Entity,
+    entities::lions::Lion,
+    entities::lions::LionChangeset,
+};
 use shipwright_ui::view_engine::{View, ViewEngine};
 
 use crate::{
@@ -21,7 +25,7 @@ pub struct LionController;
 
 #[async_trait]
 impl Controller for LionController {
-    type Id = i64;
+    type Id = String;
 
     type View = LionView;
 
@@ -69,10 +73,7 @@ impl Controller for LionController {
     ) -> Result<(Flash, Redirect), Self::Error> {
         let _records = Lion::create_batch(records, &app_state.db_pool).await?;
 
-        Ok((
-            flash.success(&format!("✅ created lions")),
-            Redirect::to("/lions"),
-        ))
+        Ok((flash.success(&format!("✅ created lions")), Redirect::to("/lions")))
     }
 
     async fn read_one(
