@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Show{% endblock %}
+{% block content %}
+<span id="errors"></span>
+{% for flash in flashes %}<p>{{ flash.message }}</p>{% endfor %}
+
+<h1>
+    Kid: {{  kid.id }}
+</h1>
+{% block update %}
+    {% include "kids/update.html"%}
+    {% endblock %}
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Kids{% endblock %}
+{% block content %}
+<h1>Your Kids</h1>
+<ul>
+    {% for kid in kids %}
+    <li>
+        <a
+            href="/kids/{{ kid.id }}">{{kid.description }}</a>
+        <button
+            hx-delete="/kids/{{ kid.id }}"
+            hx-swap="delete" hx-target="closest li">X</button>
+    </li>
+    {% endfor %}
+</ul>
+<h2>Add a Kid</h2>
+<form hx-post="/kids" hx-target="body" hx-target-errors="#errors">
+    <label>
+        Name:
+        <input type="text" name="name" />
+    </label><label>
+        Nickname:
+        <input type="text" name="nickname" />
+    </label><label>
+        Favourite paw patrol:
+        <input type="text" name="favourite_paw_patrol" />
+    </label>
+    <button type="submit">Add Kid</button>
+</form>
+<span id="errors"></span>
+{% endblock %}

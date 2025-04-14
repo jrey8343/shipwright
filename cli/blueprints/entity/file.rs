@@ -1,11 +1,12 @@
 #[cfg(feature = "test-helpers")]
 use fake::{faker, Dummy};
+use time::OffsetDateTime;
 
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::Serialize;
-use sqlx::{Sqlite, SqlitePool, FromRow, types::time::OffsetDateTime};
-use uuid::Uuid;
+use sqlx::{Sqlite, SqlitePool, FromRow};
+use uuid::Uuid
 use validator::Validate;
 use crate::{Entity, Error, transaction};
 
@@ -48,6 +49,8 @@ pub struct {{entity_struct_name}}Changeset {
     {%- endif %}
     pub {{ field.name }}: {{ field.ty }},
     {% endfor %}
+    #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::time::en::DateTime()"))]
+    pub updated_at: OffsetDateTime,
 }
 
 /// The Entity trait implements all basic CRUD operations for the {{ entity_struct_name }}.
@@ -145,11 +148,12 @@ impl Entity for {{ entity_struct_name }} {
 
         let {{ entity_singular_name }} = sqlx::query_as!(
             {{ entity_struct_name }},
-            r#"update {{ entity_plural_name }} set ({% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}) = ({% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}) where id = ? returning {% for field in entity_struct_fields -%}{{field.name}}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
+            r#"update {{ entity_plural_name }} set (updated_at, {% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}) = (?, {% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}) where id = ? returning {% for field in entity_struct_fields -%}{{field.name}}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
+            {{ entity_singular_name }}.updated_at,
             {% for field in changeset_struct_fields -%}
             {{ entity_singular_name }}.{{ field.name }},
             {%- endfor %}
-            id
+            id,
         )
         .fetch_optional(executor)
         .await?

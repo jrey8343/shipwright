@@ -1,6 +1,7 @@
 use super::helpers::{authenticated_request, test_request_with_db};
 use {{ db_crate_name }}::{DbPool, MIGRATOR, entities::{{ entity_plural_name}}::{{ entity_struct_name }}Changeset};
 use fake::{Fake, Faker};
+use time::OffsetDateTime;
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn {{ entity_plural_name }}_index_page_works_for_authenticated_users(pool: DbPool) {
@@ -65,8 +66,9 @@ async fn invalid_create_{{ entity_singular_name }}_returns_422(pool: DbPool) {
             .post("/{{ entity_plural_name }}")
             .form(&{{ entity_struct_name }}Changeset {
                 {% for field in changeset_struct_fields %}
-                {{ field.name }}: "".to_string(){% unless forloop.last %},{% endunless %}
+                {{ field.name }}: "".to_string(),
                 {% endfor %}
+                updated_at: OffsetDateTime::now_utc(),
             })
             .await;
 
@@ -80,9 +82,9 @@ async fn show_{{ entity_singular_name }}_works(pool: DbPool) {
     authenticated_request::<_, _>(pool.clone(), |request| async move {
         let response = request.get("/{{ entity_plural_name }}/1").await;
         response.assert_status_ok();
-        {% for field in changeset_struct_fields %}
+        {% for field in changeset_struct_fields -%}
         response.assert_text_contains("{{ field.name }}"); // This should match your fixture data
-        {% endfor %}
+        {%- endfor %}
     })
     .await;
 }
@@ -91,8 +93,9 @@ async fn show_{{ entity_singular_name }}_works(pool: DbPool) {
 async fn update_{{ entity_singular_name }}_works(pool: DbPool) {
     let updated_{{ entity_singular_name }} = {{ entity_struct_name }}Changeset {
         {% for field in changeset_struct_fields %}
-        {{ field.name }}: "updated {{ field.name }}".to_string(){% unless forloop.last %},{% endunless %}
+        {{ field.name }}: "updated {{ field.name }}".to_string(),
         {% endfor %}
+        updated_at: OffsetDateTime::now_utc(),
     };
 
     authenticated_request::<_, _>(pool.clone(), |request| async move {
@@ -108,9 +111,9 @@ async fn update_{{ entity_singular_name }}_works(pool: DbPool) {
             .unwrap();
 
         let response = request.get(location).await;
-        {% for field in changeset_struct_fields %}
+        {% for field in changeset_struct_fields -%}
         response.assert_text_contains(&updated_{{ entity_singular_name }}.{{ field.name }});
-        {% endfor %}
+        {%- endfor %}
     })
     .await;
 }
@@ -130,9 +133,9 @@ async fn delete_{{ entity_singular_name }}_works(pool: DbPool) {
             .unwrap();
 
         let response = request.get(location).await;
-        {% for field in changeset_struct_fields %}
+        {% for field in changeset_struct_fields -%}
         assert_ne!(response.text(), "{{ field.name }}"); // This should match your fixture data
-        {% endfor %}
+        {%- endfor %}
 
         // Verify the {{ entity_singular_name }} is deleted from the database
         let deleted_{{ entity_singular_name }} = sqlx::query_as!(

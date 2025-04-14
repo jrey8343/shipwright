@@ -1,5 +1,6 @@
 #[cfg(feature = "test-helpers")]
 use fake::{Dummy, faker};
+use time::OffsetDateTime;
 
 use crate::{Entity, Error, transaction};
 use async_trait::async_trait;
@@ -57,6 +58,8 @@ pub struct DancerChangeset {
     #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::lorem::en::Word()"))]
     #[validate(length(min = 1))]
     pub dance_style: String,
+    #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::time::en::DateTime()"))]
+    pub updated_at: OffsetDateTime,
 }
 
 /// The Entity trait implements all basic CRUD operations for the Dancer.
@@ -152,8 +155,8 @@ impl Entity for Dancer {
 
         let dancer = sqlx::query_as!(
             Dancer,
-            r#"update dancers set (name, email, dance_style) = (?, ?, ?) where id = ? returning id, created_at, updated_at, name, email, dance_style"#,
-            dancer.name,dancer.email,dancer.dance_style,
+            r#"update dancers set (name, email, dance_style, updated_at) = (?, ?, ?, ?) where id = ? returning id, created_at, updated_at, name, email, dance_style"#,
+            dancer.name,dancer.email,dancer.dance_style,dancer.updated_at,
             id
         )
         .fetch_optional(executor)

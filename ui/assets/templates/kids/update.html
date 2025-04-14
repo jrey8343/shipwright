@@ -1,0 +1,23 @@
+<form hx-put="/kids/{{ kid.id }}"
+    hx-target="body">
+    
+    <label>
+        Name:
+        <input type="text" name="name"
+            value="{{ kid.name }}" />
+    </label>
+    
+    <label>
+        Nickname:
+        <input type="text" name="nickname"
+            value="{{ kid.nickname }}" />
+    </label>
+    
+    <label>
+        Favourite paw patrol:
+        <input type="text" name="favourite_paw_patrol"
+            value="{{ kid.favourite_paw_patrol }}" />
+    </label>
+    
+    <button type="submit">Update Kid</button>
+</form>

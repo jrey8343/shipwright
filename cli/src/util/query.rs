@@ -283,7 +283,7 @@ impl FieldType {
             FieldType::Boolean { nullable } => {
                 if *nullable { "Option<bool>" } else { "bool" }.into()
             }
-            FieldType::Date | FieldType::DateTime => "OffsetDateTime".into(),
+            FieldType::Date | FieldType::DateTime => "String".into(),
             FieldType::Json { .. } => "serde_json::JsonValue".into(),
         }
     }

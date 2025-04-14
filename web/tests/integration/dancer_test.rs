@@ -4,6 +4,7 @@ use shipwright_db::{
     DbPool, MIGRATOR,
     entities::dancers::{Dancer, DancerChangeset},
 };
+use time::OffsetDateTime;
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn dancers_index_page_works_for_authenticated_users(pool: DbPool) {
@@ -71,10 +72,9 @@ async fn invalid_create_dancer_returns_422(pool: DbPool) {
             .post("/dancers")
             .form(&DancerChangeset {
                 name: "".to_string(),
-
                 email: "".to_string(),
-
                 dance_style: "".to_string(),
+                updated_at: OffsetDateTime::now_utc(),
             })
             .await;
 
@@ -87,11 +87,12 @@ async fn invalid_create_dancer_returns_422(pool: DbPool) {
 async fn show_dancer_works(pool: DbPool) {
     authenticated_request::<_, _>(pool.clone(), |request| async move {
         let response = request.get("/dancers/1").await;
+
         response.assert_status_ok();
 
         response.assert_text_contains("name"); // This should match your fixture data
 
-        response.assert_text_contains("email"); // This should match your fixture data
+        response.assert_text_contains("email@example.com"); // This should match your fixture data
 
         response.assert_text_contains("dance_style"); // This should match your fixture data
     })
@@ -104,6 +105,7 @@ async fn update_dancer_works(pool: DbPool) {
         name: "updated name".to_string(),
         email: "updated@example.com".to_string(),
         dance_style: "updated dance_style".to_string(),
+        updated_at: OffsetDateTime::now_utc(),
     };
 
     authenticated_request::<_, _>(pool.clone(), |request| async move {
