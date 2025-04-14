@@ -1,13 +1,13 @@
 #[cfg(feature = "test-helpers")]
 use fake::{faker, Dummy};
-use time::OffsetDateTime;
 
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::Serialize;
 use sqlx::{Sqlite, SqlitePool, FromRow};
-use uuid::Uuid
+use uuid::Uuid;
 use validator::Validate;
+use time::OffsetDateTime;
 use crate::{Entity, Error, transaction};
 
 /// A struct which maps the fields of an {{ entity_singular_name }} with native Sqlite types.
@@ -48,9 +48,7 @@ pub struct {{entity_struct_name}}Changeset {
     #[cfg_attr(feature = "test-helpers", dummy(faker = "{{ field.faker }}"))]
     {%- endif %}
     pub {{ field.name }}: {{ field.ty }},
-    {% endfor %}
-    #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::time::en::DateTime()"))]
-    pub updated_at: OffsetDateTime,
+    {%- endfor %}
 }
 
 /// The Entity trait implements all basic CRUD operations for the {{ entity_struct_name }}.
@@ -109,7 +107,7 @@ impl Entity for {{ entity_struct_name }} {
             {{ entity_struct_name }},
             r#"insert into {{ entity_plural_name }} (id, {% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}) values (?, {% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}) returning {% for field in entity_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
             id,
-            {% for field in changeset_struct_fields -%}
+            {% for field in changeset_struct_fields %}
             {{ entity_singular_name }}.{{ field.name }}{% unless forloop.last %},{% endunless %}
             {%- endfor %}
             )
@@ -146,13 +144,15 @@ impl Entity for {{ entity_struct_name }} {
     ) -> Result<{{ entity_struct_name }}, Error> {
         {{ entity_singular_name }}.validate()?;
 
+        let updated_at = OffsetDateTime::now_utc();
+
         let {{ entity_singular_name }} = sqlx::query_as!(
             {{ entity_struct_name }},
-            r#"update {{ entity_plural_name }} set (updated_at, {% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}) = (?, {% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}) where id = ? returning {% for field in entity_struct_fields -%}{{field.name}}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
-            {{ entity_singular_name }}.updated_at,
-            {% for field in changeset_struct_fields -%}
+            r#"update {{ entity_plural_name }} set ({% for field in changeset_struct_fields -%}{{ field.name }}{% unless forloop.last %}, {% endunless %}{%- endfor %}, updated_at) = ({% for field in changeset_struct_fields -%}?{% unless forloop.last %}, {% endunless %}{%- endfor %}, ?) where id = ? returning {% for field in entity_struct_fields -%}{{field.name}}{% unless forloop.last %}, {% endunless %}{%- endfor %}"#,
+            {% for field in changeset_struct_fields %}
             {{ entity_singular_name }}.{{ field.name }},
             {%- endfor %}
+            updated_at,
             id,
         )
         .fetch_optional(executor)

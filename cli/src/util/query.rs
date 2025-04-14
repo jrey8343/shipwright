@@ -291,7 +291,7 @@ impl FieldType {
     pub fn as_faker(&self) -> Option<String> {
         match self {
             FieldType::String { .. } => Some("faker::name::en::Name()".to_owned()),
-            FieldType::Uuid { .. } => Some("faker::uuid::UUIDv4::Uuid()".to_owned()),
+            FieldType::Uuid { .. } => Some("faker::uuid::UUIDv7::Uuid()".to_owned()),
             FieldType::Integer { .. } => Some("1..100".to_owned()),
             FieldType::Float { .. } => Some("1.0..100.0".to_owned()),
             FieldType::Double { .. } => Some("1.00..100.00".to_owned()),

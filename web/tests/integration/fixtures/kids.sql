@@ -1,5 +1,5 @@
 INSERT INTO kids (
-    name, nickname, favourite_paw_patrol
+    name, nickname, date_of_birth
 ) VALUES (
-    'name', 'nickname', 'favourite_paw_patrol'
+    'name', 'nickname', 'date_of_birth'
 ); 

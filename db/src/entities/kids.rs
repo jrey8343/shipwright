@@ -1,14 +1,14 @@
 #[cfg(feature = "test-helpers")]
-use fake::{Dummy, faker};
-use time::OffsetDateTime;
+use fake::{faker, Dummy};
 
-use crate::{Entity, Error, transaction};
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::Serialize;
-use sqlx::{FromRow, Sqlite, SqlitePool};
+use sqlx::{Sqlite, SqlitePool, FromRow};
 use uuid::Uuid;
 use validator::Validate;
+use time::OffsetDateTime;
+use crate::{Entity, Error, transaction};
 
 /// A struct which maps the fields of an kid with native Sqlite types.
 ///
@@ -31,7 +31,8 @@ pub struct Kid {
     pub updated_at: String,
     pub name: String,
     pub nickname: String,
-    pub favourite_paw_patrol: String,
+    pub date_of_birth: String,
+    
 }
 
 /// A changeset representing the data that is intended to be used to either create a new kid or update an existing kid.
@@ -47,14 +48,9 @@ pub struct Kid {
 #[cfg_attr(feature = "test-helpers", derive(Serialize, Dummy))]
 pub struct KidChangeset {
     #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::name::en::Name()"))]
-    pub name: String,
-    #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::name::en::Name()"))]
-    pub nickname: String,
-    #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::name::en::Name()"))]
-    pub favourite_paw_patrol: String,
-
-    #[cfg_attr(feature = "test-helpers", dummy(faker = "faker::time::en::DateTime()"))]
-    pub updated_at: OffsetDateTime,
+    pub name: String,#[cfg_attr(feature = "test-helpers", dummy(faker = "faker::name::en::Name()"))]
+    pub nickname: String,#[cfg_attr(feature = "test-helpers", dummy(faker = "faker::time::en::DateTime()"))]
+    pub date_of_birth: String,
 }
 
 /// The Entity trait implements all basic CRUD operations for the Kid.
@@ -63,7 +59,7 @@ pub struct KidChangeset {
 ///
 /// ```
 /// let kid = Kid::load(1, &pool).await?;
-/// ```
+/// ``` 
 #[async_trait]
 impl Entity for Kid {
     type Id = String;
@@ -77,7 +73,7 @@ impl Entity for Kid {
     ) -> Result<Vec<Kid>, Error> {
         let kids = sqlx::query_as!(
             Kid,
-            r#"select id, created_at, updated_at, name, nickname, favourite_paw_patrol from kids"#
+            r#"select id, created_at, updated_at, name, nickname, date_of_birth from kids"#
         )
         .fetch_all(executor)
         .await?;
@@ -91,7 +87,7 @@ impl Entity for Kid {
     ) -> Result<Kid, Error> {
         let kid = sqlx::query_as!(
             Kid,
-            r#"select id, created_at, updated_at, name, nickname, favourite_paw_patrol from kids where id = ?"#,
+            r#"select id, created_at, updated_at, name, nickname, date_of_birth from kids where id = ?"#,
             id
         )
         .fetch_optional(executor)
@@ -111,11 +107,12 @@ impl Entity for Kid {
 
         let kid  = sqlx::query_as!(
             Kid,
-            r#"insert into kids (id, name, nickname, favourite_paw_patrol) values (?, ?, ?, ?) returning id, created_at, updated_at, name, nickname, favourite_paw_patrol"#,
+            r#"insert into kids (id, name, nickname, date_of_birth) values (?, ?, ?, ?) returning id, created_at, updated_at, name, nickname, date_of_birth"#,
             id,
+            
             kid.name,
             kid.nickname,
-            kid.favourite_paw_patrol
+            kid.date_of_birth
             )
             .fetch_one(executor)
             .await?;
@@ -123,7 +120,10 @@ impl Entity for Kid {
         Ok(kid)
     }
 
-    async fn create_batch(kids: Vec<KidChangeset>, pool: &SqlitePool) -> Result<Vec<Kid>, Error> {
+    async fn create_batch(
+        kids: Vec<KidChangeset>,
+        pool: &SqlitePool,
+    ) -> Result<Vec<Kid>, Error> {
         let mut tx = transaction(pool).await?;
 
         let mut results: Vec<Kid> = vec![];
@@ -147,13 +147,16 @@ impl Entity for Kid {
     ) -> Result<Kid, Error> {
         kid.validate()?;
 
+        let updated_at = OffsetDateTime::now_utc();
+
         let kid = sqlx::query_as!(
             Kid,
-            r#"update kids set (updated_at, name, nickname, favourite_paw_patrol) = (?, ?, ?, ?) where id = ? returning id, created_at, updated_at, name, nickname, favourite_paw_patrol"#,
-            kid.updated_at,
+            r#"update kids set (name, nickname, date_of_birth, updated_at) = (?, ?, ?, ?) where id = ? returning id, created_at, updated_at, name, nickname, date_of_birth"#,
+            
             kid.name,
             kid.nickname,
-            kid.favourite_paw_patrol,
+            kid.date_of_birth,
+            updated_at,
             id,
         )
         .fetch_optional(executor)
@@ -169,7 +172,7 @@ impl Entity for Kid {
     ) -> Result<Kid, Error> {
         let kid = sqlx::query_as!(
             Kid,
-            r#"delete from kids where id = ? returning id, created_at, updated_at, name, nickname, favourite_paw_patrol"#,
+            r#"delete from kids where id = ? returning id, created_at, updated_at, name, nickname, date_of_birth"#,
             id
         )
         .fetch_optional(executor)

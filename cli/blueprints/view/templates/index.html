@@ -21,7 +21,7 @@
         {{ field.label_name }}:
         <input type="text" name="{{ field.name }}" />
     </label>
-    {%- endfor %}
+    {% endfor %}
     <button type="submit">Add {{ entity_singular_name | capitalize }}</button>
 </form>
 <span id="errors"></span>

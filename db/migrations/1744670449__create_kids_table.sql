@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS "kids" ( "id" uuid_text NOT NULL UNIQUE, "created_at" datetime_text DEFAULT CURRENT_TIMESTAMP NOT NULL, "updated_at" datetime_text DEFAULT CURRENT_TIMESTAMP NOT NULL, "name" varchar(256) NOT NULL, "nickname" varchar(256) NOT NULL, "date_of_birth" date_text DEFAULT CURRENT_TIMESTAMP NOT NULL )

@@ -1,7 +1,6 @@
-use super::helpers::{authenticated_request, test_request_with_db};
-use {{ db_crate_name }}::{DbPool, MIGRATOR, entities::{{ entity_plural_name}}::{{ entity_struct_name }}Changeset};
+use super::helpers::authenticated_request;
+use {{ db_crate_name }}::{DbPool, MIGRATOR, entities::{{ entity_plural_name }}::{% raw %}{{% endraw %}{{ entity_struct_name }}, {{ entity_struct_name }}Changeset}{% raw %}}{% endraw %};
 use fake::{Fake, Faker};
-use time::OffsetDateTime;
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn {{ entity_plural_name }}_index_page_works_for_authenticated_users(pool: DbPool) {
@@ -29,9 +28,9 @@ async fn create_{{ entity_singular_name }}_works(pool: DbPool) {
             .unwrap();
 
         let response = request.get(location).await;
-        {% for field in changeset_struct_fields %}
+        {% for field in changeset_struct_fields -%}
         response.assert_text_contains(&{{ entity_singular_name }}.{{ field.name }});
-        {% endfor %}
+        {%- endfor %}
     })
     .await;
 }
@@ -46,9 +45,9 @@ async fn create_{{ entity_singular_name }}_persists_in_database(pool: DbPool) {
         let saved_{{ entity_singular_name }} = sqlx::query_as!(
             {{ entity_struct_name }},
             "SELECT * FROM {{ entity_plural_name }} WHERE {% for field in changeset_struct_fields %}{% if forloop.first %}{{ field.name }} = ?{% else %} AND {{ field.name }} = ?{% endif %}{% endfor %}",
-            {% for field in changeset_struct_fields %}
+            {% for field in changeset_struct_fields -%}
             {{ entity_singular_name }}.{{ field.name }}{% unless forloop.last %},{% endunless %}
-            {% endfor %}
+            {%- endfor %}
         )
         .fetch_optional(&pool)
         .await
@@ -65,9 +64,9 @@ async fn invalid_create_{{ entity_singular_name }}_returns_422(pool: DbPool) {
         let response = request
             .post("/{{ entity_plural_name }}")
             .form(&{{ entity_struct_name }}Changeset {
-                {% for field in changeset_struct_fields %}
+                {% for field in changeset_struct_fields -%}
                 {{ field.name }}: "".to_string(),
-                {% endfor %}
+                {%- endfor %}
                 updated_at: OffsetDateTime::now_utc(),
             })
             .await;
@@ -92,10 +91,9 @@ async fn show_{{ entity_singular_name }}_works(pool: DbPool) {
 #[sqlx::test(migrator = "MIGRATOR", fixtures("{{ entity_plural_name }}"))]
 async fn update_{{ entity_singular_name }}_works(pool: DbPool) {
     let updated_{{ entity_singular_name }} = {{ entity_struct_name }}Changeset {
-        {% for field in changeset_struct_fields %}
+        {% for field in changeset_struct_fields -%}
         {{ field.name }}: "updated {{ field.name }}".to_string(),
-        {% endfor %}
-        updated_at: OffsetDateTime::now_utc(),
+        {%- endfor %}
     };
 
     authenticated_request::<_, _>(pool.clone(), |request| async move {
