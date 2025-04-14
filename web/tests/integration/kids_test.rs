@@ -70,7 +70,6 @@ async fn invalid_create_kid_returns_422(pool: DbPool) {
                 name: "".to_string(),
                 nickname: "".to_string(),
                 date_of_birth: "".to_string(),
-                updated_at: OffsetDateTime::now_utc(),
             })
             .await;
 

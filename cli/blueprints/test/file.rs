@@ -67,7 +67,6 @@ async fn invalid_create_{{ entity_singular_name }}_returns_422(pool: DbPool) {
                 {% for field in changeset_struct_fields -%}
                 {{ field.name }}: "".to_string(),
                 {%- endfor %}
-                updated_at: OffsetDateTime::now_utc(),
             })
             .await;
 
