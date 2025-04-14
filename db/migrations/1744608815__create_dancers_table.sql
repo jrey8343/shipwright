@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS "dancers" ( "id" uuid_text NOT NULL UNIQUE, "created_at" datetime_text DEFAULT CURRENT_TIMESTAMP NOT NULL, "updated_at" datetime_text DEFAULT CURRENT_TIMESTAMP NOT NULL, "name" varchar(256) NOT NULL, "email" varchar(256) NOT NULL, "dance_style" varchar(256) NOT NULL )

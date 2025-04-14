@@ -1,0 +1,23 @@
+<form hx-put="/dancers/{{ dancer.id }}"
+    hx-target="body">
+    
+    <label>
+        Name:
+        <input type="text" name="name"
+            value="{{ dancer.name }}" />
+    </label>
+    
+    <label>
+        Email:
+        <input type="text" name="email"
+            value="{{ dancer.email }}" />
+    </label>
+    
+    <label>
+        Dance style:
+        <input type="text" name="dance_style"
+            value="{{ dancer.dance_style }}" />
+    </label>
+    
+    <button type="submit">Update Dancer</button>
+</form>

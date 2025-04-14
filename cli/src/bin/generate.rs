@@ -63,12 +63,10 @@ enum Commands {
     Controller {
         #[arg(help = "The name of the controller.")]
         name: String,
-        #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
-        fields: Vec<String>,
     },
-    #[command(about = "Generate a test for a controller")]
-    ControllerTest {
-        #[arg(help = "The name of the controller.")]
+    #[command(about = "Generate an integration test")]
+    IntegrationTest {
+        #[arg(help = "The name of the resource.")]
         name: String,
         #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
         fields: Vec<String>,
@@ -91,6 +89,8 @@ enum Commands {
     View {
         #[arg(help = "The name of the view.")]
         name: String,
+        #[arg(help = "Column definitions like: 'id:uuid^', 'name:string256!', 'avatar:references=avatars(id)'", num_args = 0..)]
+        fields: Vec<String>,
     },
     #[command(
         about = "Generate a complete scaffold (migration, entity, controller, test, and view)"
@@ -114,26 +114,21 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated middleware {}.", &file_name));
             Ok(())
         }
-        Commands::Controller { name, fields } => {
+        Commands::Controller { name } => {
             ui.info("Generating controller…");
             let file_name = generate_controller(name.clone())
                 .await
                 .wrap_err("Could not generate controller!")?;
             ui.success(&format!("Generated controller {}.", &file_name));
             ui.info("Do not forget to route the controller's actions in ./web/src/routes.rs!");
-            ui.info("Generating test for controller…");
-            let file_name = generate_controller_test(name, parse_cli_fields(fields)?)
-                .await
-                .wrap_err("Could not generate test for controller!")?;
-            ui.success(&format!("Generated test for controller {}.", &file_name));
             Ok(())
         }
-        Commands::ControllerTest { name, fields } => {
+        Commands::IntegrationTest { name, fields } => {
             ui.info("Generating test for controller…");
-            let file_name = generate_controller_test(name, parse_cli_fields(fields)?)
+            let file_name = generate_integration_test(name, parse_cli_fields(fields)?)
                 .await
-                .wrap_err("Could not generate test for controller!")?;
-            ui.success(&format!("Generated test for controller {}.", &file_name));
+                .wrap_err("Could not generate integration test!")?;
+            ui.success(&format!("Generated integration test {}.", &file_name));
             Ok(())
         }
         Commands::Migration { table, fields } => {
@@ -154,9 +149,9 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated entity {}.", &struct_name));
             Ok(())
         }
-        Commands::View { name } => {
+        Commands::View { name, fields } => {
             ui.info("Generating view…");
-            let file_name = generate_view(name)
+            let file_name = generate_view(name, parse_cli_fields(fields)?)
                 .await
                 .wrap_err("Could not generate view!")?;
             ui.success(&format!("Generated view {}.", &file_name));
@@ -191,16 +186,16 @@ async fn cli(ui: &mut UI<'_>, cli: Cli) -> Result<(), Error> {
             ui.success(&format!("Generated controller {}.", &file_name));
             ui.info("Do not forget to route the controller's actions in ./web/src/routes.rs!");
 
-            // Generate controller test
-            ui.info("Generating test for controller…");
-            let file_name = generate_controller_test(name.clone(), parsed_fields.clone())
+            // Generate integration test
+            ui.info("Generating integration test…");
+            let file_name = generate_integration_test(name.clone(), parsed_fields.clone())
                 .await
-                .wrap_err("Could not generate test for controller!")?;
-            ui.success(&format!("Generated test for controller {}.", &file_name));
+                .wrap_err("Could not generate integration test!")?;
+            ui.success(&format!("Generated integration test for {}.", file_name));
 
             // Generate view
             ui.info("Generating view…");
-            let file_name = generate_view(name.clone())
+            let file_name = generate_view(name.clone(), parsed_fields.clone())
                 .await
                 .wrap_err("Could not generate view!")?;
             ui.success(&format!("Generated view {}.", &file_name));
@@ -261,7 +256,7 @@ async fn generate_controller(name: String) -> Result<String, Error> {
     Ok(file_path)
 }
 
-async fn generate_controller_test(name: String, fields: Vec<Field>) -> Result<String, Error> {
+async fn generate_integration_test(name: String, fields: Vec<Field>) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
     let name_plural = to_plural(&name);
     let name_singular = to_singular(&name);
@@ -272,7 +267,8 @@ async fn generate_controller_test(name: String, fields: Vec<Field>) -> Result<St
 
     let (entity_struct_fields, changeset_struct_fields) = generate_struct_fields(&fields);
 
-    let template = get_liquid_template("controller/test.rs")?;
+    // Generate test file
+    let template = get_liquid_template("test/file.rs")?;
     let variables = liquid::object!({
         "name": name,
         "entity_struct_name": struct_name,
@@ -293,6 +289,24 @@ async fn generate_controller_test(name: String, fields: Vec<Field>) -> Result<St
         "./web/tests/integration/main.rs",
         &format!("mod {name}_test;"),
     )?;
+
+    // Generate fixture file
+    let fixture_template = get_liquid_template("test/fixtures.sql")?;
+    let fixture_variables = liquid::object!({
+        "entity_plural_name": name_plural,
+        "changeset_struct_fields": changeset_struct_fields,
+    });
+    let fixture_output = fixture_template
+        .render(&fixture_variables)
+        .wrap_err("Failed to render fixture template")?;
+
+    // Create fixtures directory if it doesn't exist
+    let fixtures_dir = format!("./web/tests/integration/fixtures");
+    fs::create_dir_all(&fixtures_dir).wrap_err("Failed to create fixtures directory")?;
+
+    // Create fixture file
+    let fixture_path = format!("{}/{}.sql", fixtures_dir, name_plural);
+    create_project_file(&fixture_path, fixture_output.as_bytes())?;
 
     Ok(file_path)
 }
@@ -353,7 +367,7 @@ async fn generate_entity(name: String, fields: Vec<Field>) -> Result<String, Err
     Ok(struct_name)
 }
 
-async fn generate_view(name: String) -> Result<String, Error> {
+async fn generate_view(name: String, fields: Vec<Field>) -> Result<String, Error> {
     let name = to_snake_case(&name).to_lowercase();
     let name_plural = to_plural(&name);
     let name_singular = to_singular(&name);
@@ -361,11 +375,14 @@ async fn generate_view(name: String) -> Result<String, Error> {
     let db_crate_name = get_member_package_name("db")?;
     let db_crate_name = to_snake_case(&db_crate_name);
 
+    let (_, changeset_struct_fields) = generate_struct_fields(&fields);
+
     let variables = liquid::object!({
         "entity_struct_name": struct_name,
         "entity_singular_name": name_singular,
         "entity_plural_name": name_plural,
         "db_crate_name": db_crate_name,
+        "changeset_struct_fields": changeset_struct_fields,
     });
 
     // Generate Rust view file

@@ -1,4 +1,4 @@
-use super::test_request_with_db;
+use super::helpers::test_request_with_db;
 use fake::{Fake as _, Faker};
 use shipwright_db::{
     DbPool, MIGRATOR,

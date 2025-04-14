@@ -19,7 +19,7 @@ use crate::{
     views::{{ entity_plural_name }}::{{ entity_struct_name }}View,
 };
 
-use super::Controller;
+use super::controller::Controller;
 
 pub struct {{ entity_struct_name }}Controller;
 

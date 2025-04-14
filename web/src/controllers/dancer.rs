@@ -7,8 +7,8 @@ use axum::{
 };
 use shipwright_db::{
     Entity,
-    entities::lions::Lion,
-    entities::lions::LionChangeset,
+    entities::dancers::Dancer,
+    entities::dancers::DancerChangeset,
 };
 use shipwright_ui::view_engine::{View, ViewEngine};
 
@@ -16,29 +16,29 @@ use crate::{
     error::Error,
     middlewares::flash::{Flash, IncomingFlashes},
     state::AppState,
-    views::lions::LionView,
+    views::dancers::DancerView,
 };
 
-use super::Controller;
+use super::controller::Controller;
 
-pub struct LionController;
+pub struct DancerController;
 
 #[async_trait]
-impl Controller for LionController {
+impl Controller for DancerController {
     type Id = String;
 
-    type View = LionView;
+    type View = DancerView;
 
-    type EntityChangeset = LionChangeset;
+    type EntityChangeset = DancerChangeset;
 
     type Error = Error;
 
     fn router() -> Router<AppState> {
         Router::new()
-            .route("/lions", get(Self::read_all).post(Self::create))
-            .route("/lions/batch", post(Self::create_batch))
+            .route("/dancers", get(Self::read_all).post(Self::create))
+            .route("/dancers/batch", post(Self::create_batch))
             .route(
-                "/lions/{id}",
+                "/dancers/{id}",
                 get(Self::read_one).put(Self::update).delete(Self::delete),
             )
     }
@@ -48,9 +48,9 @@ impl Controller for LionController {
         flashes: IncomingFlashes,
         State(app_state): State<AppState>,
     ) -> Result<(IncomingFlashes, Self::View), Self::Error> {
-        let lions = Lion::load_all(&app_state.db_pool).await?;
+        let dancers = Dancer::load_all(&app_state.db_pool).await?;
 
-        Ok((flashes.clone(), LionView::Index(v, lions, flashes)))
+        Ok((flashes.clone(), DancerView::Index(v, dancers, flashes)))
     }
 
     async fn create(
@@ -58,11 +58,11 @@ impl Controller for LionController {
         State(app_state): State<AppState>,
         Form(record): Form<Self::EntityChangeset>,
     ) -> Result<(Flash, Redirect), Self::Error> {
-        let lion = Lion::create(record, &app_state.db_pool).await?;
+        let dancer = Dancer::create(record, &app_state.db_pool).await?;
 
         Ok((
-            flash.success(&format!("✅ created new lion")),
-            Redirect::to(&format!("/lions/{}", lion.id)),
+            flash.success(&format!("✅ created new dancer")),
+            Redirect::to(&format!("/dancers/{}", dancer.id)),
         ))
     }
 
@@ -71,9 +71,9 @@ impl Controller for LionController {
         State(app_state): State<AppState>,
         Form(records): Form<Vec<Self::EntityChangeset>>,
     ) -> Result<(Flash, Redirect), Self::Error> {
-        let _records = Lion::create_batch(records, &app_state.db_pool).await?;
+        let _records = Dancer::create_batch(records, &app_state.db_pool).await?;
 
-        Ok((flash.success(&format!("✅ created lions")), Redirect::to("/lions")))
+        Ok((flash.success(&format!("✅ created dancers")), Redirect::to("/dancers")))
     }
 
     async fn read_one(
@@ -82,9 +82,9 @@ impl Controller for LionController {
         Path(id): Path<Self::Id>,
         State(app_state): State<AppState>,
     ) -> Result<(IncomingFlashes, Self::View), Self::Error> {
-        let lion = Lion::load(id, &app_state.db_pool).await?;
+        let dancer = Dancer::load(id, &app_state.db_pool).await?;
 
-        Ok((flashes.clone(), LionView::Show(v, lion, flashes)))
+        Ok((flashes.clone(), DancerView::Show(v, dancer, flashes)))
     }
 
     async fn update(
@@ -93,11 +93,11 @@ impl Controller for LionController {
         State(app_state): State<AppState>,
         Form(form): Form<Self::EntityChangeset>,
     ) -> Result<(Flash, Redirect), Self::Error> {
-        let lion = Lion::update(id, form, &app_state.db_pool).await?;
+        let dancer = Dancer::update(id, form, &app_state.db_pool).await?;
 
         Ok((
-            flash.success(&format!("✅ updated lion")),
-            Redirect::to(&format!("/lions/{}", lion.id)),
+            flash.success(&format!("✅ updated dancer")),
+            Redirect::to(&format!("/dancers/{}", dancer.id)),
         ))
     }
 
@@ -106,8 +106,8 @@ impl Controller for LionController {
         Path(id): Path<Self::Id>,
         State(app_state): State<AppState>,
     ) -> Result<(Flash, Redirect), Self::Error> {
-        let _lion = Lion::delete(id, &app_state.db_pool).await?;
+        let _dancer = Dancer::delete(id, &app_state.db_pool).await?;
 
-        Ok((flash.info(&format!("deleted lion")), Redirect::to("/lions")))
+        Ok((flash.info(&format!("deleted dancer")), Redirect::to("/dancers")))
     }
 }

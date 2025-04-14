@@ -6,8 +6,8 @@
     {% raw %}{% for {% endraw %}{{ entity_singular_name }}{% raw %} in {% endraw %}{{ entity_plural_name }}{% raw %} %}
     <li>
         <a
-            href="/{% endraw %}{{ entity_plural_name }}{% raw %}/{{ {% endraw %}{{ entity_singular_name }}{% raw %}.id }}">{{
-            {% endraw %}{{ entity_singular_name }}{% raw %}.description }}</a>
+            href="/{% endraw %}{{ entity_plural_name }}{% raw %}/{{ {% endraw %}{{ entity_singular_name }}{% raw %}.id }}">{{{%
+            endraw %}{{ entity_singular_name }}{% raw %}.description }}</a>
         <button
             hx-delete="/{% endraw %}{{ entity_plural_name }}{% raw %}/{{ {% endraw %}{{ entity_singular_name }}{% raw %}.id }}"
             hx-swap="delete" hx-target="closest li">X</button>
@@ -16,12 +16,13 @@
 </ul>
 <h2>Add a {{ entity_singular_name | capitalize }}</h2>
 <form hx-post="/{{ entity_plural_name }}" hx-target="body" hx-target-errors="#errors">
+    {% for field in changeset_struct_fields -%}
     <label>
-        Description:
-        <input type="text" name="description" />
-        <span id="description-errors"></span>
-        <button type="submit">Add {{ entity_singular_name | capitalize }}</button>
+        {{ field.label_name }}:
+        <input type="text" name="{{ field.name }}" />
     </label>
+    {%- endfor %}
+    <button type="submit">Add {{ entity_singular_name | capitalize }}</button>
 </form>
 <span id="errors"></span>
 {% raw %}{% endblock %}{% endraw %}

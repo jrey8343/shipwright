@@ -11,14 +11,13 @@ use tower_sessions_sqlx_store::SqliteStore;
 
 use crate::{
     controllers::{
-        Controller,
         auth::{
             login::LoginController, logout::LogoutController, register::RegisterController,
             register_confirm::RegisterConfirmController,
         },
+        controller::Controller,
+        dancer::DancerController,
         home::HomeController,
-        invoice::InvoiceController,
-        lion::LionController,
         ping::PingController,
         todos::TodoController,
     },
@@ -46,9 +45,8 @@ where
         .merge(LogoutController::router())
         .merge(RegisterController::router())
         .merge(RegisterConfirmController::router())
-        .merge(LionController::router())
-        .merge(InvoiceController::router())
         .merge(PingController::router())
+        .merge(DancerController::router())
         .with_state(app_state.clone())
         .layer(ServiceBuilder::new().layer((
             TraceLayer::new_for_http(),

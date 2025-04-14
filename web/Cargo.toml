@@ -14,6 +14,7 @@ shipwright_worker = { path = "../worker" }
 shipwright_ui = { path = "../ui" }
 
 axum = { version = "0.8.1", features = ["tracing", "macros"] }
+axum-extra = { version = "0.10.1", features = ["cookie", "cookie-signed"] }
 color-eyre = "0.6.3"
 tokio = { version = "1.43.0", features = [
   "macros",
@@ -32,7 +33,6 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tracing-error = "0.2.1"
 thiserror = "2.0.11"
 async-trait = "0.1.86"
-axum-extra = { version = "0.10.0", features = ["cookie", "cookie-signed"] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.138"
 axum-login = "0.17.0"
@@ -41,6 +41,7 @@ tower-sessions-sqlx-store = { version = "0.15.0", features = ["sqlite"] }
 password-auth = "1.0.0"
 bytes = "1.10.1"
 mime = "0.3.17"
+serde_urlencoded = "0.7.1"
 
 [dev-dependencies]
 shipwright_db = { path = "../db", features = ['test-helpers'] }

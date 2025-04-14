@@ -1,5 +1,5 @@
 use color_eyre::eyre::eyre;
-use cruet::to_plural;
+use cruet::{case::to_sentence_case, to_plural};
 use sea_query::{Alias, ColumnDef, Expr};
 use serde::Serialize;
 
@@ -222,10 +222,14 @@ impl FieldType {
                 }
             }
             FieldType::Date => {
-                col.date().default(Expr::cust("CURRENT_TIMESTAMP"));
+                col.date()
+                    .default(Expr::cust("CURRENT_TIMESTAMP"))
+                    .not_null();
             }
             FieldType::DateTime => {
-                col.date_time().default(Expr::cust("CURRENT_TIMESTAMP"));
+                col.date_time()
+                    .default(Expr::cust("CURRENT_TIMESTAMP"))
+                    .not_null();
             }
             FieldType::Json { binary, unique } => {
                 if *binary {
@@ -279,7 +283,7 @@ impl FieldType {
             FieldType::Boolean { nullable } => {
                 if *nullable { "Option<bool>" } else { "bool" }.into()
             }
-            FieldType::Date | FieldType::DateTime => "Option<OffsetDateTime>".into(),
+            FieldType::Date | FieldType::DateTime => "OffsetDateTime".into(),
             FieldType::Json { .. } => "serde_json::JsonValue".into(),
         }
     }
@@ -314,6 +318,19 @@ impl FieldType {
 // rest of your code remains unchanged
 pub fn parse_cli_fields(raw_fields: Vec<String>) -> Result<Vec<Field>, Error> {
     let mut fields = vec![];
+
+    // Add id field automatically
+    fields.push(Field::Column(
+        "id".to_string(),
+        FieldType::Uuid {
+            nullable: false,
+            unique: true,
+        },
+    ));
+
+    // Add created_at and updated_at fields automatically
+    fields.push(Field::Column("created_at".to_string(), FieldType::DateTime));
+    fields.push(Field::Column("updated_at".to_string(), FieldType::DateTime));
 
     for field in raw_fields {
         let mut parts = field.splitn(2, ':');
@@ -402,6 +419,7 @@ pub struct ChangesetField {
     pub ty: String,
     pub validation: Option<String>,
     pub faker: Option<String>,
+    pub label_name: String,
 }
 
 pub fn generate_struct_fields(fields: &[Field]) -> (Vec<StructField>, Vec<ChangesetField>) {
@@ -426,6 +444,7 @@ pub fn generate_struct_fields(fields: &[Field]) -> (Vec<StructField>, Vec<Change
                         ty,
                         validation: field_type.as_validation(),
                         faker: field_type.as_faker(),
+                        label_name: to_sentence_case(&name),
                     });
                 }
             }
@@ -442,6 +461,7 @@ pub fn generate_struct_fields(fields: &[Field]) -> (Vec<StructField>, Vec<Change
                     ty: "Uuid".to_string(),
                     validation: None,
                     faker: Some("Uuid()".to_string()),
+                    label_name: to_sentence_case(&local_key),
                 });
             }
         }

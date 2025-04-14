@@ -1,7 +1,6 @@
 use axum::{Router, http::StatusCode, routing::get};
 
 use crate::state::AppState;
-
 pub struct PingController;
 
 impl PingController {

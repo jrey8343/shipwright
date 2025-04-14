@@ -1,9 +1,11 @@
 <form hx-put="/{{ entity_plural_name }}/{% raw %}{{ {% endraw %}{{ entity_singular_name }}{% raw %}.id }}{% endraw %}"
     hx-target="body">
+    {% for field in changeset_struct_fields %}
     <label>
-        Description:
-        <input type="text" name="description"
-            value="{% raw %}{{ {% endraw %}{{ entity_singular_name }}{% raw %}.description }}{% endraw %}" />
+        {{ field.label_name }}:
+        <input type="text" name="{{ field.name }}"
+            value="{% raw %}{{ {% endraw %}{{ entity_singular_name }}{% raw %}.{% endraw %}{{ field.name }}{% raw %} }}{% endraw %}" />
     </label>
+    {% endfor %}
     <button type="submit">Update {{ entity_singular_name | capitalize }}</button>
 </form>

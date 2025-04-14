@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Dancers{% endblock %}
+{% block content %}
+<h1>Your Dancers</h1>
+<ul>
+    {% for dancer in dancers %}
+    <li>
+        <a href="/dancers/{{ dancer.id }}">{{ dancer.name }}</a>
+        <button hx-delete="/dancers/{{ dancer.id }}" hx-swap="delete" hx-target="closest li">X</button>
+    </li>
+    {% endfor %}
+</ul>
+<h2>Add a Dancer</h2>
+<form hx-post="/dancers" hx-target="body" hx-target-errors="#errors">
+    <label>
+        Name:
+        <input type="text" name="name" />
+    </label>
+    <label>
+        Email:
+        <input type="text" name="email" />
+    </label>
+    <label>
+        Dance style:
+        <input type="text" name="dance_style" />
+    </label>
+    <button type="submit">Add Dancer</button>
+</form>
+<span id="errors"></span>
+{% endblock %}

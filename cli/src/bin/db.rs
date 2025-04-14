@@ -261,7 +261,17 @@ async fn reset(ui: &mut UI<'_>, config: &DatabaseConfig) -> Result<String, Error
 
 fn get_db_config(config: &DatabaseConfig) -> SqliteConnectOptions {
     let db_url = Url::parse(&config.url).expect("Invalid DATABASE_URL!");
-    ConnectOptions::from_url(&db_url).expect("Invalid DATABASE_URL!")
+    let mut options = ConnectOptions::from_url(&db_url).expect("Invalid DATABASE_URL!");
+
+    // For test environment, adjust the path to be relative to the db crate
+    if config.url.contains("__test.db") {
+        let current_dir = std::env::current_dir().expect("Failed to get current directory");
+        let db_path = current_dir.join("db").join("shipwright__test.db");
+        let db_url = format!("sqlite://{}", db_path.to_str().unwrap());
+        options = ConnectOptions::from_url(&Url::parse(&db_url).unwrap()).unwrap();
+    }
+
+    options
 }
 
 async fn get_db_client(config: &DatabaseConfig) -> SqliteConnection {

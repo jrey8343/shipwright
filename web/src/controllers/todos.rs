@@ -18,7 +18,7 @@ use crate::{
     views::todos::TodoView,
 };
 
-use super::Controller;
+use super::controller::Controller;
 
 pub struct TodoController;
 
